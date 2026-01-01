@@ -1,0 +1,23 @@
+[package]
+name = "ents-sqlite"
+version.workspace = true
+authors.workspace = true
+edition = "2021"
+license = "MIT OR Apache-2.0"
+description = "Ents database implementation using sqlite3"
+repository = "https://github.com/blmarket/ents"
+
+[dependencies]
+ents = { version = "0.1.0", path = "../ents" }
+r2d2_sqlite = "0.31.0"
+r2d2 = "0.8.10"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+dyn-clone = "1.0.20"
+thiserror = "2"
+anyhow = "1"
+
+[dev-dependencies]
+typetag = "0.2"
+ents-test-suite = { path = "../ents-test-suite" }
+tempfile = "3"

@@ -1,0 +1,15 @@
+[package]
+name = "ents"
+version.workspace = true
+authors.workspace = true
+edition = "2021"
+license = "MIT OR Apache-2.0"
+description = "Minimal entity framework"
+repository = "https://github.com/blmarket/ents"
+keywords = ["ent", "entity-framework", "tao"]
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+typetag = "0.2.21"
+dyn-clone = "1.0.20"
+thiserror = "2"
