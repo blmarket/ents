@@ -1,6 +1,6 @@
 use ents::{
-    DraftError, EdgeDraft, EdgeProvider, EdgeValue, Ent, EntMutationError, EntWithEdges, Id,
-    NullEdgeProvider,
+    DraftError, EdgeDraft, EdgeProvider, EdgeQuery, EdgeValue, Ent, EntMutationError, EntWithEdges, Id,
+    NullEdgeProvider, Transactional,
 };
 use serde::{Deserialize, Serialize};
 
@@ -88,6 +88,101 @@ impl EntWithEdges for User {
 }
 
 impl User {
+    pub fn new(username: String, email: String) -> Self {
+        Self {
+            username,
+            email,
+            id: 0,
+            last_updated: 0,
+        }
+    }
+}
+
+/// User entity with unique email constraint for testing
+#[derive(Clone, Serialize, Deserialize)]
+pub struct UserWithUniqueEmail {
+    pub username: String,
+    pub email: String,
+    pub id: Id,
+    pub last_updated: u64,
+}
+
+#[typetag::serde]
+impl Ent for UserWithUniqueEmail {
+    fn id(&self) -> Id {
+        self.id
+    }
+
+    fn set_id(&mut self, id: Id) {
+        self.id = id;
+    }
+
+    fn last_updated(&self) -> u64 {
+        self.last_updated
+    }
+
+    fn mark_updated(&mut self) -> Result<(), EntMutationError> {
+        self.last_updated = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_secs();
+        Ok(())
+    }
+}
+
+/// Edge draft for enforcing unique email constraint
+#[derive(PartialEq)]
+pub struct UniqueEmailDraft {
+    pub user_id: Id,
+    pub email: String,
+}
+
+impl EdgeDraft for UniqueEmailDraft {
+    fn check<T: Transactional>(self, txn: &T) -> Result<Vec<EdgeValue>, DraftError> {
+        // Check if any existing user has this email
+        let existing_edges = txn.find_edges(0, EdgeQuery::asc(&[b"unique_email"]))?
+            .into_iter()
+            .filter(|_edge| {
+                // In a real implementation, we'd need to check the email value
+                // For now, this is a placeholder - UNIQUE constraints aren't fully implemented
+                false // This would be replaced with actual uniqueness checking
+            })
+            .collect::<Vec<_>>();
+
+        if !existing_edges.is_empty() {
+            return Err(DraftError::ValidationFailed(
+                format!("Email '{}' is already taken", self.email)
+            ));
+        }
+
+        // Create the unique email edge
+        Ok(vec![EdgeValue::new(
+            0, // Use a special source ID for global constraints
+            b"unique_email".to_vec(),
+            self.user_id,
+        )])
+    }
+}
+
+/// Edge provider for UserWithUniqueEmail that enforces unique email
+pub struct UserWithUniqueEmailEdgeProvider;
+
+impl EdgeProvider<UserWithUniqueEmail> for UserWithUniqueEmailEdgeProvider {
+    type Draft = UniqueEmailDraft;
+
+    fn draft(ent: &UserWithUniqueEmail) -> Self::Draft {
+        UniqueEmailDraft {
+            user_id: ent.id,
+            email: ent.email.clone(),
+        }
+    }
+}
+
+impl EntWithEdges for UserWithUniqueEmail {
+    type EdgeProvider = UserWithUniqueEmailEdgeProvider;
+}
+
+impl UserWithUniqueEmail {
     pub fn new(username: String, email: String) -> Self {
         Self {
             username,

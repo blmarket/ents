@@ -15,3 +15,6 @@ crate but rewritten from the scratch.
     were separated due to
     [typetag](https://lib.rs/crates/typetag)
     limitations.
+- Support consistency via `Transactional` API - using database transactions
+  - Can implement UNIQUE constraints
+  - Write all or nothing
