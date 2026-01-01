@@ -118,7 +118,7 @@ pub trait Transactional: QueryEdge {
 
     fn update<T, F, B>(&self, ent: B, mutator: F) -> Result<bool, DatabaseError>
     where
-        T: EntWithEdges + 'static,
+        T: EntWithEdges,
         F: FnOnce(&mut T),
         B: BorrowMut<T>;
 

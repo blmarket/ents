@@ -65,11 +65,11 @@ impl EntExt for Box<dyn Ent> {
         (&**self as &dyn Any).is::<T>()
     }
 
-    fn as_ent<T: Ent + 'static>(&self) -> Option<&T> {
+    fn as_ent<T: Ent>(&self) -> Option<&T> {
         (&**self as &dyn Any).downcast_ref::<T>()
     }
 
-    fn as_ent_mut<T: Ent + 'static>(&mut self) -> Option<&mut T> {
+    fn as_ent_mut<T: Ent>(&mut self) -> Option<&mut T> {
         (&mut **self as &mut dyn Any).downcast_mut::<T>()
     }
 

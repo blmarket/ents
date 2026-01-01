@@ -149,7 +149,7 @@ impl<'conn> Transactional for Txn<'conn> {
         Ok(())
     }
 
-    fn update<T: Ent + EntWithEdges + 'static, F: FnOnce(&mut T), B: BorrowMut<T>>(
+    fn update<T: EntWithEdges, F: FnOnce(&mut T), B: BorrowMut<T>>(
         &self,
         mut ent0: B,
         mutator: F,
