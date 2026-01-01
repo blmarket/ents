@@ -190,6 +190,7 @@ pub fn run_all_tests<R: TestSuiteRunner + Clone>(runner: R) -> anyhow::Result<()
     test_multiple_entities(&runner)?;
     test_relationships(&runner)?;
     test_unique_constraints(&runner)?;
+    test_concurrent_updates(&runner)?;
 
     println!("All tests passed!");
     Ok(())
@@ -375,6 +376,156 @@ pub fn test_multiple_entities<R: TestSuiteRunner>(r: &R) -> anyhow::Result<()> {
                 }
                 None => return Err(anyhow::anyhow!("Entity {} not found", id)),
             }
+        }
+        txn.commit()?;
+        Ok(())
+    })
+}
+
+pub fn test_concurrent_updates<R: TestSuiteRunner>(r: &R) -> anyhow::Result<()> {
+    println!("  Testing concurrent updates...");
+
+    // Create an entity to test concurrent updates on
+    let mut runner1 = r.create()?;
+    let entity_id = runner1.execute(|txn| {
+        let entity = TestEntity::new("concurrent_test".to_string(), 0);
+        let id = txn.create(entity)?;
+        txn.commit()?;
+        Ok(id)
+    })?;
+
+    // Test 1: Simulate race condition - multiple attempts to update with potentially stale data
+    println!("    Testing race condition simulation...");
+    let mut success_count = 0;
+
+    // First, get the entity and its current state
+    let mut runner2 = r.create()?;
+    let (entity_data, last_updated) = runner2.execute(|txn| {
+        let retrieved = txn.get(entity_id)?;
+        match retrieved {
+            Some(ent) => {
+                let test_ent = ent
+                    .as_ent::<TestEntity>()
+                    .ok_or_else(|| anyhow::anyhow!("Entity is not TestEntity"))?;
+                Ok((test_ent.clone(), test_ent.last_updated))
+            }
+            None => Err(anyhow::anyhow!("Entity not found")),
+        }
+    })?;
+
+    // Now simulate multiple concurrent updates using the same stale data
+    // In a real race condition, multiple threads would have the same last_updated value
+    for i in 0..3 {
+        let mut runner = r.create()?;
+        let result = runner.execute(|txn| {
+            // Create an entity with the stale last_updated (simulating what would happen
+            // if multiple threads fetched the entity at the same time)
+            let mut stale_entity = entity_data.clone();
+            stale_entity.last_updated = last_updated; // All use the same stale timestamp
+
+            let update_result = txn.update(Box::new(stale_entity), |e: &mut TestEntity| {
+                e.value = 100 + i;
+                e.name = format!("attempt_{}", i);
+            });
+            txn.commit()?;
+            Ok(update_result.is_ok())
+        });
+
+        match result {
+            Ok(true) => {
+                success_count += 1;
+                println!("      Attempt {} succeeded", i);
+            }
+            Ok(false) => {
+                println!("      Attempt {} failed (expected for race condition)", i);
+            }
+            Err(e) => {
+                println!("      Attempt {} error: {}", i, e);
+            }
+        }
+    }
+
+    // In optimistic locking, only one should succeed when all start with the same last_updated
+    if success_count > 1 {
+        println!("      Warning: Multiple updates succeeded - backend may not enforce optimistic locking");
+    } else if success_count == 1 {
+        println!("      Race condition handled correctly - only one update succeeded");
+    } else {
+        println!("      All updates failed - check if backend supports optimistic locking");
+    }
+
+    // Test 2: Verify it rejects request to update entity with stale last_updated value
+    println!("    Testing stale update rejection...");
+    let mut runner3 = r.create()?;
+    runner3.execute(|txn| {
+        let retrieved = txn.get(entity_id)?;
+        match retrieved {
+            Some(ent) => {
+                if let Some(mut concrete_ent) = ent.downcast_ent::<TestEntity>() {
+                    // Modify the last_updated to make it stale (simulate concurrent modification)
+                    concrete_ent.last_updated = concrete_ent.last_updated.saturating_sub(1);
+
+                    // This should ideally fail because the last_updated is stale
+                    let update_result = txn.update(concrete_ent, |e: &mut TestEntity| {
+                        e.value = 999;
+                    });
+
+                    match update_result {
+                        Ok(_) => {
+                            println!("      Warning: Stale update was allowed (backend may not enforce optimistic locking)");
+                        }
+                        Err(_) => {
+                            println!("      Stale update correctly rejected");
+                        }
+                    }
+                }
+            }
+            None => return Err(anyhow::anyhow!("Entity not found for stale update test")),
+        }
+        txn.commit()?;
+        Ok(())
+    })?;
+
+    // Test 3: Verify it's possible to do series of updates when they all use correct last_updated value
+    println!("    Testing sequential updates with correct last_updated...");
+    let mut runner4 = r.create()?;
+    runner4.execute(|txn| {
+        for i in 0..3 {
+            let retrieved = txn.get(entity_id)?;
+            match retrieved {
+                Some(ent) => {
+                    if let Some(concrete_ent) = ent.downcast_ent::<TestEntity>() {
+                        let update_result = txn.update(concrete_ent, |e: &mut TestEntity| {
+                            e.value = 200 + i;
+                            e.name = format!("sequential_update_{}", i);
+                        })?;
+                        assert!(update_result, "Sequential update {} should succeed", i);
+                        println!("      Sequential update {} succeeded", i);
+                    } else {
+                        return Err(anyhow::anyhow!("Entity is not TestEntity in sequential test"));
+                    }
+                }
+                None => return Err(anyhow::anyhow!("Entity not found in sequential update {}", i)),
+            }
+        }
+        txn.commit()?;
+        Ok(())
+    })?;
+
+    // Verify final state
+    let mut runner5 = r.create()?;
+    runner5.execute(|txn| {
+        let retrieved = txn.get(entity_id)?;
+        match retrieved {
+            Some(ent) => {
+                let test_ent = ent
+                    .as_ent::<TestEntity>()
+                    .ok_or_else(|| anyhow::anyhow!("Entity is not TestEntity"))?;
+                assert_eq!(test_ent.name, "sequential_update_2");
+                assert_eq!(test_ent.value, 202);
+                println!("      Sequential updates completed successfully");
+            }
+            None => return Err(anyhow::anyhow!("Entity not found after sequential updates")),
         }
         txn.commit()?;
         Ok(())

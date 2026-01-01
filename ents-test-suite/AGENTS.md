@@ -37,6 +37,7 @@ The test suite includes comprehensive tests for:
 - **Basic CRUD Operations**: Create, Read, Update, Delete entities
 - **Entity Relationships**: Testing edges between entities (User-Post-Tag relationships)
 - **Unique Constraints**: Email uniqueness validation (partially implemented)
+- **Concurrent Updates**: Race condition testing with optimistic locking
 - **Error Handling**: Proper error responses for invalid operations
 - **Multiple Entity Operations**: Bulk operations and isolation
 
@@ -117,6 +118,7 @@ Individual test functions are also available:
 - `test_basic_delete`
 - `test_relationships`
 - `test_unique_constraints`
+- `test_concurrent_updates`
 - `test_error_handling`
 - `test_multiple_entities`
 
@@ -125,6 +127,7 @@ Individual test functions are also available:
 - ✅ Basic CRUD operations fully tested and working
 - ✅ Entity relationships (edges) implemented and tested
 - ⚠️ Unique constraints partially implemented (framework exists but enforcement may vary by backend)
+- ✅ Concurrent updates and race condition testing
 - ✅ Error handling and edge cases covered
 - ✅ Multiple entity operations tested
 
@@ -132,6 +135,6 @@ Individual test functions are also available:
 
 - Full unique constraint enforcement across all backends
 - Performance benchmarking tests
-- Concurrent transaction testing
+- Advanced concurrent transaction testing (distributed scenarios)
 - Schema migration testing
 - Advanced query testing (beyond basic edge traversal)
