@@ -1,6 +1,6 @@
 use ents::{
-    DraftError, EdgeDraft, EdgeProvider, EdgeQuery, EdgeValue, Ent, EntMutationError, EntWithEdges, Id,
-    NullEdgeProvider, Transactional,
+    DraftError, EdgeDraft, EdgeProvider, EdgeQuery, EdgeValue, Ent, EntMutationError, EntWithEdges,
+    Id, NullEdgeProvider, Transactional,
 };
 use serde::{Deserialize, Serialize};
 
@@ -31,7 +31,7 @@ impl Ent for TestEntity {
         self.last_updated = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap()
-            .as_secs();
+            .as_micros() as u64;
         Ok(())
     }
 }
@@ -78,7 +78,7 @@ impl Ent for User {
         self.last_updated = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap()
-            .as_secs();
+            .as_micros() as u64;
         Ok(())
     }
 }
@@ -125,7 +125,7 @@ impl Ent for UserWithUniqueEmail {
         self.last_updated = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap()
-            .as_secs();
+            .as_micros() as u64;
         Ok(())
     }
 }
@@ -140,7 +140,8 @@ pub struct UniqueEmailDraft {
 impl EdgeDraft for UniqueEmailDraft {
     fn check<T: Transactional>(self, txn: &T) -> Result<Vec<EdgeValue>, DraftError> {
         // Check if any existing user has this email
-        let existing_edges = txn.find_edges(0, EdgeQuery::asc(&[b"unique_email"]))?
+        let existing_edges = txn
+            .find_edges(0, EdgeQuery::asc(&[b"unique_email"]))?
             .into_iter()
             .filter(|_edge| {
                 // In a real implementation, we'd need to check the email value
@@ -150,9 +151,10 @@ impl EdgeDraft for UniqueEmailDraft {
             .collect::<Vec<_>>();
 
         if !existing_edges.is_empty() {
-            return Err(DraftError::ValidationFailed(
-                format!("Email '{}' is already taken", self.email)
-            ));
+            return Err(DraftError::ValidationFailed(format!(
+                "Email '{}' is already taken",
+                self.email
+            )));
         }
 
         // Create the unique email edge
@@ -220,7 +222,7 @@ impl Ent for Tag {
         self.last_updated = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap()
-            .as_secs();
+            .as_micros() as u64;
         Ok(())
     }
 }
@@ -323,7 +325,7 @@ impl Ent for Post {
         self.last_updated = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap()
-            .as_secs();
+            .as_micros() as u64;
         Ok(())
     }
 }

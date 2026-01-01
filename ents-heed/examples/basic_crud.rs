@@ -33,7 +33,7 @@ impl Ent for User {
         self.last_updated = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap()
-            .as_secs();
+            .as_micros() as u64;
         Ok(())
     }
 }

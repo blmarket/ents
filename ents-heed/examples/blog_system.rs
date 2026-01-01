@@ -6,8 +6,8 @@
 //! Run with: cargo run --example blog_system
 
 use ents::{
-    DraftError, EdgeDraft, EdgeProvider, EdgeQuery, QueryEdge, EdgeValue, Ent, EntExt,
-    EntMutationError, EntWithEdges, Id, NullEdgeProvider, Transactional,
+    DraftError, EdgeDraft, EdgeProvider, EdgeQuery, EdgeValue, Ent, EntExt, EntMutationError,
+    EntWithEdges, Id, NullEdgeProvider, QueryEdge, Transactional,
 };
 use ents_heed::HeedEnv;
 use serde::{Deserialize, Serialize};
@@ -35,7 +35,7 @@ impl Ent for Author {
         self.last_updated = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap()
-            .as_secs();
+            .as_micros() as u64;
         Ok(())
     }
 }
@@ -79,7 +79,7 @@ impl Ent for BlogPost {
         self.last_updated = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap()
-            .as_secs();
+            .as_micros() as u64;
         Ok(())
     }
 }
