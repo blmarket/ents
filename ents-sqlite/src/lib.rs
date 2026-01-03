@@ -45,8 +45,6 @@ impl<'conn> Txn<'conn> {
                 source: Box::new(e),
             })?;
 
-        dbg!(&rows_affected, &id);
-
         Ok(rows_affected > 0)
     }
 }
