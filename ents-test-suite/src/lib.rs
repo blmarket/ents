@@ -34,14 +34,16 @@ pub fn test_basic_create<R: TestSuiteRunner>(r: &R) -> anyhow::Result<()> {
         let retrieved = txn.get(id)?;
         match retrieved {
             Some(ent) => {
-                let test_ent = ent
-                    .as_ent::<TestEntity>()
-                    .ok_or_else(|| anyhow::anyhow!("Entity is not TestEntity"))?;
+                let test_ent = ent.as_ent::<TestEntity>().ok_or_else(|| {
+                    anyhow::anyhow!("Entity is not TestEntity")
+                })?;
                 assert_eq!(test_ent.name, "test_create");
                 assert_eq!(test_ent.value, 42);
                 assert_eq!(test_ent.id, id);
             }
-            None => return Err(anyhow::anyhow!("Entity not found after creation")),
+            None => {
+                return Err(anyhow::anyhow!("Entity not found after creation"))
+            }
         }
         txn.commit()?;
         Ok(())
@@ -54,7 +56,8 @@ pub fn test_relationships<R: TestSuiteRunner>(r: &R) -> anyhow::Result<()> {
     let mut runner = r.create()?;
     runner.execute(|txn| {
         // Create a user
-        let user = User::new("johndoe".to_string(), "john@example.com".to_string());
+        let user =
+            User::new("johndoe".to_string(), "john@example.com".to_string());
         let user_id = txn.create(user)?;
 
         // Create some tags
@@ -82,18 +85,29 @@ pub fn test_relationships<R: TestSuiteRunner>(r: &R) -> anyhow::Result<()> {
         let mut runner2 = r.create()?;
         runner2.execute(|txn| {
             // Find the post's author
-            let author_edges = txn.find_edges(post_id, EdgeQuery::asc(&[b"author"]))?;
-            assert_eq!(author_edges.len(), 1, "Post should have exactly one author");
+            let author_edges =
+                txn.find_edges(post_id, EdgeQuery::asc(&[b"author"]))?;
+            assert_eq!(
+                author_edges.len(),
+                1,
+                "Post should have exactly one author"
+            );
             assert_eq!(
                 author_edges[0].dest, user_id,
                 "Author edge should point to the correct user"
             );
 
             // Find the post's tags
-            let tag_edges = txn.find_edges(post_id, EdgeQuery::asc(&[b"tag"]))?;
-            assert_eq!(tag_edges.len(), 3, "Post should have exactly three tags");
+            let tag_edges =
+                txn.find_edges(post_id, EdgeQuery::asc(&[b"tag"]))?;
+            assert_eq!(
+                tag_edges.len(),
+                3,
+                "Post should have exactly three tags"
+            );
 
-            let mut tag_ids: Vec<Id> = tag_edges.iter().map(|e| e.dest).collect();
+            let mut tag_ids: Vec<Id> =
+                tag_edges.iter().map(|e| e.dest).collect();
             tag_ids.sort();
             let expected_tags = vec![tag1_id, tag2_id, tag3_id];
             assert_eq!(
@@ -135,7 +149,9 @@ pub fn test_relationships<R: TestSuiteRunner>(r: &R) -> anyhow::Result<()> {
     Ok(())
 }
 
-pub fn test_unique_constraints<R: TestSuiteRunner>(r: &R) -> anyhow::Result<()> {
+pub fn test_unique_constraints<R: TestSuiteRunner>(
+    r: &R,
+) -> anyhow::Result<()> {
     println!("  Testing UNIQUE constraints...");
 
     let mut runner1 = r.create()?;
@@ -179,7 +195,9 @@ pub fn test_unique_constraints<R: TestSuiteRunner>(r: &R) -> anyhow::Result<()> 
     }
 }
 
-pub fn run_all_tests<R: TestSuiteRunner + Clone>(runner: R) -> anyhow::Result<()> {
+pub fn run_all_tests<R: TestSuiteRunner + Clone>(
+    runner: R,
+) -> anyhow::Result<()> {
     println!("Running all test cases...");
 
     test_basic_create(&runner)?;
@@ -212,9 +230,9 @@ pub fn test_basic_read<R: TestSuiteRunner>(r: &R) -> anyhow::Result<()> {
         let retrieved = txn.get(id)?;
         match retrieved {
             Some(ent) => {
-                let test_ent = ent
-                    .as_ent::<TestEntity>()
-                    .ok_or_else(|| anyhow::anyhow!("Entity is not TestEntity"))?;
+                let test_ent = ent.as_ent::<TestEntity>().ok_or_else(|| {
+                    anyhow::anyhow!("Entity is not TestEntity")
+                })?;
                 assert_eq!(test_ent.name, "test_read");
                 assert_eq!(test_ent.value, 100);
             }
@@ -252,10 +270,11 @@ pub fn test_basic_update<R: TestSuiteRunner>(r: &R) -> anyhow::Result<()> {
             Some(ent) => {
                 if let Some(concrete_ent) = ent.downcast_ent::<TestEntity>() {
                     // Now concrete_ent is Box<TestEntity>, which implements BorrowMut<TestEntity>
-                    let result = txn.update(concrete_ent, |e: &mut TestEntity| {
-                        e.value = 75;
-                        e.name = "updated_name".to_string();
-                    })?;
+                    let result =
+                        txn.update(concrete_ent, |e: &mut TestEntity| {
+                            e.value = 75;
+                            e.name = "updated_name".to_string();
+                        })?;
                     assert!(result, "Update should succeed");
                 } else {
                     return Err(anyhow::anyhow!("Entity is not TestEntity"));
@@ -273,13 +292,15 @@ pub fn test_basic_update<R: TestSuiteRunner>(r: &R) -> anyhow::Result<()> {
         let retrieved = txn.get(id)?;
         match retrieved {
             Some(ent) => {
-                let test_ent = ent
-                    .as_ent::<TestEntity>()
-                    .ok_or_else(|| anyhow::anyhow!("Entity is not TestEntity"))?;
+                let test_ent = ent.as_ent::<TestEntity>().ok_or_else(|| {
+                    anyhow::anyhow!("Entity is not TestEntity")
+                })?;
                 assert_eq!(test_ent.name, "updated_name");
                 assert_eq!(test_ent.value, 75);
             }
-            None => return Err(anyhow::anyhow!("Entity not found after update")),
+            None => {
+                return Err(anyhow::anyhow!("Entity not found after update"))
+            }
         }
         txn.commit()?;
         Ok(())
@@ -368,9 +389,10 @@ pub fn test_multiple_entities<R: TestSuiteRunner>(r: &R) -> anyhow::Result<()> {
             let retrieved = txn.get(id)?;
             match retrieved {
                 Some(ent) => {
-                    let test_ent = ent
-                        .as_ent::<TestEntity>()
-                        .ok_or_else(|| anyhow::anyhow!("Entity is not TestEntity"))?;
+                    let test_ent =
+                        ent.as_ent::<TestEntity>().ok_or_else(|| {
+                            anyhow::anyhow!("Entity is not TestEntity")
+                        })?;
                     assert_eq!(test_ent.name, format!("test_multi_{}", i));
                     assert_eq!(test_ent.value, i as i32 * 10);
                 }
@@ -382,7 +404,9 @@ pub fn test_multiple_entities<R: TestSuiteRunner>(r: &R) -> anyhow::Result<()> {
     })
 }
 
-pub fn test_concurrent_updates<R: TestSuiteRunner>(r: &R) -> anyhow::Result<()> {
+pub fn test_concurrent_updates<R: TestSuiteRunner>(
+    r: &R,
+) -> anyhow::Result<()> {
     println!("  Testing concurrent updates...");
 
     // Create an entity to test concurrent updates on
@@ -404,9 +428,9 @@ pub fn test_concurrent_updates<R: TestSuiteRunner>(r: &R) -> anyhow::Result<()> 
         let retrieved = txn.get(entity_id)?;
         match retrieved {
             Some(ent) => {
-                let test_ent = ent
-                    .as_ent::<TestEntity>()
-                    .ok_or_else(|| anyhow::anyhow!("Entity is not TestEntity"))?;
+                let test_ent = ent.as_ent::<TestEntity>().ok_or_else(|| {
+                    anyhow::anyhow!("Entity is not TestEntity")
+                })?;
                 Ok((test_ent.clone(), test_ent.last_updated))
             }
             None => Err(anyhow::anyhow!("Entity not found")),
@@ -423,10 +447,11 @@ pub fn test_concurrent_updates<R: TestSuiteRunner>(r: &R) -> anyhow::Result<()> 
             let mut stale_entity = entity_data.clone();
             stale_entity.last_updated = last_updated; // All use the same stale timestamp
 
-            let update_result = txn.update(Box::new(stale_entity), |e: &mut TestEntity| {
-                e.value = 100 + i;
-                e.name = format!("attempt_{}", i);
-            });
+            let update_result =
+                txn.update(Box::new(stale_entity), |e: &mut TestEntity| {
+                    e.value = 100 + i;
+                    e.name = format!("attempt_{}", i);
+                });
             txn.commit()?;
             Ok(update_result.is_ok())
         });
@@ -437,7 +462,10 @@ pub fn test_concurrent_updates<R: TestSuiteRunner>(r: &R) -> anyhow::Result<()> 
                 println!("      Attempt {} succeeded", i);
             }
             Ok(false) => {
-                println!("      Attempt {} failed (expected for race condition)", i);
+                println!(
+                    "      Attempt {} failed (expected for race condition)",
+                    i
+                );
             }
             Err(e) => {
                 println!("      Attempt {} error: {}", i, e);
@@ -494,18 +522,31 @@ pub fn test_concurrent_updates<R: TestSuiteRunner>(r: &R) -> anyhow::Result<()> 
             let retrieved = txn.get(entity_id)?;
             match retrieved {
                 Some(ent) => {
-                    if let Some(concrete_ent) = ent.downcast_ent::<TestEntity>() {
-                        let update_result = txn.update(concrete_ent, |e: &mut TestEntity| {
-                            e.value = 200 + i;
-                            e.name = format!("sequential_update_{}", i);
-                        })?;
-                        assert!(update_result, "Sequential update {} should succeed", i);
+                    if let Some(concrete_ent) = ent.downcast_ent::<TestEntity>()
+                    {
+                        let update_result =
+                            txn.update(concrete_ent, |e: &mut TestEntity| {
+                                e.value = 200 + i;
+                                e.name = format!("sequential_update_{}", i);
+                            })?;
+                        assert!(
+                            update_result,
+                            "Sequential update {} should succeed",
+                            i
+                        );
                         println!("      Sequential update {} succeeded", i);
                     } else {
-                        return Err(anyhow::anyhow!("Entity is not TestEntity in sequential test"));
+                        return Err(anyhow::anyhow!(
+                            "Entity is not TestEntity in sequential test"
+                        ));
                     }
                 }
-                None => return Err(anyhow::anyhow!("Entity not found in sequential update {}", i)),
+                None => {
+                    return Err(anyhow::anyhow!(
+                        "Entity not found in sequential update {}",
+                        i
+                    ))
+                }
             }
         }
         txn.commit()?;
@@ -518,14 +559,18 @@ pub fn test_concurrent_updates<R: TestSuiteRunner>(r: &R) -> anyhow::Result<()> 
         let retrieved = txn.get(entity_id)?;
         match retrieved {
             Some(ent) => {
-                let test_ent = ent
-                    .as_ent::<TestEntity>()
-                    .ok_or_else(|| anyhow::anyhow!("Entity is not TestEntity"))?;
+                let test_ent = ent.as_ent::<TestEntity>().ok_or_else(|| {
+                    anyhow::anyhow!("Entity is not TestEntity")
+                })?;
                 assert_eq!(test_ent.name, "sequential_update_2");
                 assert_eq!(test_ent.value, 202);
                 println!("      Sequential updates completed successfully");
             }
-            None => return Err(anyhow::anyhow!("Entity not found after sequential updates")),
+            None => {
+                return Err(anyhow::anyhow!(
+                    "Entity not found after sequential updates"
+                ))
+            }
         }
         txn.commit()?;
         Ok(())

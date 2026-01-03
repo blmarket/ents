@@ -50,7 +50,10 @@ pub enum DraftError {
 }
 
 pub trait EdgeDraft: PartialEq {
-    fn check<T: Transactional>(self, txn: &T) -> Result<Vec<EdgeValue>, DraftError>;
+    fn check<T: Transactional>(
+        self,
+        txn: &T,
+    ) -> Result<Vec<EdgeValue>, DraftError>;
 }
 
 pub trait EdgeProvider<E: Ent + ?Sized> {
@@ -116,7 +119,11 @@ pub trait Transactional: QueryEdge {
 
     fn create_edge(&self, edge: EdgeValue) -> Result<(), DatabaseError>;
 
-    fn update<T, F, B>(&self, ent: B, mutator: F) -> Result<bool, DatabaseError>
+    fn update<T, F, B>(
+        &self,
+        ent: B,
+        mutator: F,
+    ) -> Result<bool, DatabaseError>
     where
         T: EntWithEdges,
         F: FnOnce(&mut T),
@@ -130,7 +137,10 @@ where
     T1: EdgeDraft,
     T2: EdgeDraft,
 {
-    fn check<Trans: Transactional>(self, txn: &Trans) -> Result<Vec<EdgeValue>, DraftError> {
+    fn check<Trans: Transactional>(
+        self,
+        txn: &Trans,
+    ) -> Result<Vec<EdgeValue>, DraftError> {
         let (t1, t2) = self;
         let mut edges = t1.check(txn)?;
         edges.extend(t2.check(txn)?);

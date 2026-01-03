@@ -5,7 +5,9 @@
 //!
 //! Run with: cargo run --example basic_crud
 
-use ents::{Ent, EntMutationError, EntWithEdges, Id, NullEdgeProvider, Transactional};
+use ents::{
+    Ent, EntMutationError, EntWithEdges, Id, NullEdgeProvider, Transactional,
+};
 use ents_heed::HeedEnv;
 use serde::{Deserialize, Serialize};
 
@@ -106,7 +108,10 @@ fn main() -> anyhow::Result<()> {
             let txn = env.write_txn()?;
             if let Some(user_ent) = txn.get(user_id)? {
                 let user_json = serde_json::to_value(&user_ent)?;
-                println!("  New data: {}", serde_json::to_string_pretty(&user_json)?);
+                println!(
+                    "  New data: {}",
+                    serde_json::to_string_pretty(&user_json)?
+                );
             }
         }
     }

@@ -1,6 +1,6 @@
 use ents::{
-    DraftError, EdgeDraft, EdgeProvider, EdgeQuery, EdgeValue, Ent, EntMutationError, EntWithEdges,
-    Id, NullEdgeProvider, Transactional,
+    DraftError, EdgeDraft, EdgeProvider, EdgeQuery, EdgeValue, Ent,
+    EntMutationError, EntWithEdges, Id, NullEdgeProvider, Transactional,
 };
 use serde::{Deserialize, Serialize};
 
@@ -138,7 +138,10 @@ pub struct UniqueEmailDraft {
 }
 
 impl EdgeDraft for UniqueEmailDraft {
-    fn check<T: Transactional>(self, txn: &T) -> Result<Vec<EdgeValue>, DraftError> {
+    fn check<T: Transactional>(
+        self,
+        txn: &T,
+    ) -> Result<Vec<EdgeValue>, DraftError> {
         // Check if any existing user has this email
         let existing_edges = txn
             .find_edges(0, EdgeQuery::asc(&[b"unique_email"]))?
@@ -261,7 +264,10 @@ pub struct AuthorEdgeDraft {
 }
 
 impl EdgeDraft for AuthorEdgeDraft {
-    fn check<T: ents::Transactional>(self, _txn: &T) -> Result<Vec<EdgeValue>, DraftError> {
+    fn check<T: ents::Transactional>(
+        self,
+        _txn: &T,
+    ) -> Result<Vec<EdgeValue>, DraftError> {
         Ok(vec![EdgeValue::new(
             self.post_id,
             b"author".to_vec(),
@@ -278,7 +284,10 @@ pub struct TagsEdgeDraft {
 }
 
 impl EdgeDraft for TagsEdgeDraft {
-    fn check<T: ents::Transactional>(self, _txn: &T) -> Result<Vec<EdgeValue>, DraftError> {
+    fn check<T: ents::Transactional>(
+        self,
+        _txn: &T,
+    ) -> Result<Vec<EdgeValue>, DraftError> {
         let mut edges = Vec::new();
         for tag_id in self.tag_ids {
             edges.push(EdgeValue::new(self.post_id, b"tag".to_vec(), tag_id));
@@ -335,7 +344,12 @@ impl EntWithEdges for Post {
 }
 
 impl Post {
-    pub fn new(title: String, content: String, author_id: Id, tag_ids: Vec<Id>) -> Self {
+    pub fn new(
+        title: String,
+        content: String,
+        author_id: Id,
+        tag_ids: Vec<Id>,
+    ) -> Self {
         Self {
             title,
             content,

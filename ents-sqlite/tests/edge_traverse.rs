@@ -1,4 +1,7 @@
-use ents::{DatabaseError, Edge, EdgeCursor, EdgeQuery, EdgeValue, Id, QueryEdge, Transactional};
+use ents::{
+    DatabaseError, Edge, EdgeCursor, EdgeQuery, EdgeValue, Id, QueryEdge,
+    Transactional,
+};
 use ents_sqlite::Txn;
 use r2d2_sqlite::rusqlite::Connection;
 
@@ -31,7 +34,10 @@ fn setup_db() -> Connection {
 }
 
 /// Helper to insert test edges
-fn insert_edges(txn: &Txn, edges: &[(Id, &[u8], Id)]) -> Result<(), DatabaseError> {
+fn insert_edges(
+    txn: &Txn,
+    edges: &[(Id, &[u8], Id)],
+) -> Result<(), DatabaseError> {
     for (source, sort_key, dest) in edges {
         txn.create_edge(EdgeValue {
             source: *source,

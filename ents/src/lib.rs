@@ -4,8 +4,8 @@ pub mod query_edge;
 use std::any::Any;
 
 pub use edge_provider::{
-    DraftError, EdgeDraft, EdgeProvider, EdgeValue, EntWithEdges, NullEdgeDraft, NullEdgeProvider,
-    Transactional,
+    DraftError, EdgeDraft, EdgeProvider, EdgeValue, EntWithEdges,
+    NullEdgeDraft, NullEdgeProvider, Transactional,
 };
 pub use query_edge::{Edge, EdgeCursor, EdgeQuery, QueryEdge, SortOrder};
 

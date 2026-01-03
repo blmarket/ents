@@ -2,8 +2,8 @@ use std::borrow::BorrowMut;
 
 use ents::Edge;
 use ents::{
-    DatabaseError, EdgeDraft, EdgeProvider, EdgeQuery, EdgeValue, Ent, EntWithEdges, Id, QueryEdge,
-    SortOrder, Transactional,
+    DatabaseError, EdgeDraft, EdgeProvider, EdgeQuery, EdgeValue, Ent,
+    EntWithEdges, Id, QueryEdge, SortOrder, Transactional,
 };
 use r2d2_sqlite::rusqlite::{params, OptionalExtension, Transaction};
 
@@ -22,9 +22,10 @@ impl<'conn> Txn<'conn> {
     ) -> Result<bool, DatabaseError> {
         // Serialize the entity to JSON
         let entity_type = ent.typetag_name().to_string();
-        let data_json = serde_json::to_string(&ent).map_err(|e| DatabaseError::Other {
-            source: Box::new(e),
-        })?;
+        let data_json =
+            serde_json::to_string(&ent).map_err(|e| DatabaseError::Other {
+                source: Box::new(e),
+            })?;
 
         // Build the UPDATE query with optional CAS check
         let rows_affected = self
@@ -39,7 +40,12 @@ impl<'conn> Txn<'conn> {
                         ?4 IS NULL
                     )
                 "#,
-                params![data_json, entity_type, id as i64, expected_last_updated.map(|v| v as i64)],
+                params![
+                    data_json,
+                    entity_type,
+                    id as i64,
+                    expected_last_updated.map(|v| v as i64)
+                ],
             )
             .map_err(|e| DatabaseError::Other {
                 source: Box::new(e),
@@ -56,8 +62,10 @@ impl<'conn> Txn<'conn> {
 
         // Had to cast to &dyn Ent to make sure `type` to be serialized as well.
         let data_json =
-            serde_json::to_string(&(ent as &dyn Ent)).map_err(|e| DatabaseError::Other {
-                source: Box::new(e),
+            serde_json::to_string(&(ent as &dyn Ent)).map_err(|e| {
+                DatabaseError::Other {
+                    source: Box::new(e),
+                }
             })?;
 
         self.0
@@ -87,8 +95,8 @@ impl<'conn> Transactional for Txn<'conn> {
         stmt.query_row(params![id as i64], |row| {
             let id: Id = row.get::<_, i64>(0)? as Id;
             let data_json: &str = row.get_ref(1)?.as_str()?;
-            let mut ret =
-                serde_json::from_str::<Box<dyn Ent>>(data_json).expect("failed to parse JSON");
+            let mut ret = serde_json::from_str::<Box<dyn Ent>>(data_json)
+                .expect("failed to parse JSON");
             ret.set_id(id);
             Ok(ret)
         })
@@ -115,7 +123,10 @@ impl<'conn> Transactional for Txn<'conn> {
         Ok(())
     }
 
-    fn delete<E: Ent + EntWithEdges>(&self, id: Id) -> Result<(), DatabaseError> {
+    fn delete<E: Ent + EntWithEdges>(
+        &self,
+        id: Id,
+    ) -> Result<(), DatabaseError> {
         self.0
             .prepare_cached(
                 r#"
@@ -207,7 +218,10 @@ impl<'conn> Transactional for Txn<'conn> {
         Ok(updated)
     }
 
-    fn create<E: Ent + EntWithEdges>(&self, mut ent: E) -> Result<Id, DatabaseError> {
+    fn create<E: Ent + EntWithEdges>(
+        &self,
+        mut ent: E,
+    ) -> Result<Id, DatabaseError> {
         let id = self.insert(&ent)?;
         ent.set_id(id);
         ent.setup_edges(self).map_err(|e| DatabaseError::Other {
@@ -224,7 +238,11 @@ impl<'conn> Transactional for Txn<'conn> {
 }
 
 impl<'conn> QueryEdge for Txn<'conn> {
-    fn find_edges(&self, source: Id, query: EdgeQuery) -> Result<Vec<Edge>, DatabaseError> {
+    fn find_edges(
+        &self,
+        source: Id,
+        query: EdgeQuery,
+    ) -> Result<Vec<Edge>, DatabaseError> {
         // Build WHERE clause for edge names filter
         let name_filter = if query.edge_names.is_empty() {
             String::new()
@@ -272,22 +290,29 @@ impl<'conn> QueryEdge for Txn<'conn> {
         let params_refs: Vec<&dyn r2d2_sqlite::rusqlite::ToSql> =
             params.iter().map(|p| p.as_ref()).collect();
 
-        let mut stmt = self.0.prepare(&sql).map_err(|e| DatabaseError::Other {
-            source: Box::new(e),
-        })?;
+        let mut stmt =
+            self.0.prepare(&sql).map_err(|e| DatabaseError::Other {
+                source: Box::new(e),
+            })?;
 
         let rows = stmt
             .query_map(params_refs.as_slice(), |row| {
                 let source: i64 = row.get(0)?;
                 let sort_key: Vec<u8> = match row.get_ref(1)? {
-                    r2d2_sqlite::rusqlite::types::ValueRef::Text(s) => s.to_vec(),
-                    r2d2_sqlite::rusqlite::types::ValueRef::Blob(b) => b.to_vec(),
+                    r2d2_sqlite::rusqlite::types::ValueRef::Text(s) => {
+                        s.to_vec()
+                    }
+                    r2d2_sqlite::rusqlite::types::ValueRef::Blob(b) => {
+                        b.to_vec()
+                    }
                     _ => {
-                        return Err(r2d2_sqlite::rusqlite::Error::InvalidColumnType(
-                            1,
-                            "type".into(),
-                            row.get_ref(1)?.data_type(),
-                        ))
+                        return Err(
+                            r2d2_sqlite::rusqlite::Error::InvalidColumnType(
+                                1,
+                                "type".into(),
+                                row.get_ref(1)?.data_type(),
+                            ),
+                        )
                     }
                 };
                 let destination: i64 = row.get(2)?;

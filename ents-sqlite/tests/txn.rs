@@ -1,6 +1,7 @@
 use ents::{
-    DraftError, EdgeDraft, EdgeProvider, EdgeQuery, QueryEdge, EdgeValue, Ent, EntExt as _,
-    EntMutationError, EntWithEdges, Id, NullEdgeProvider, Transactional,
+    DraftError, EdgeDraft, EdgeProvider, EdgeQuery, EdgeValue, Ent,
+    EntExt as _, EntMutationError, EntWithEdges, Id, NullEdgeProvider,
+    QueryEdge, Transactional,
 };
 use ents_sqlite::Txn;
 use r2d2::Pool;
@@ -151,7 +152,10 @@ struct TestPersonEdgeDraft {
 }
 
 impl EdgeDraft for TestPersonEdgeDraft {
-    fn check<T: Transactional>(self, _txn: &T) -> Result<Vec<EdgeValue>, DraftError> {
+    fn check<T: Transactional>(
+        self,
+        _txn: &T,
+    ) -> Result<Vec<EdgeValue>, DraftError> {
         Ok(vec![EdgeValue::new(
             self.person_id,
             b"lives_in".to_vec(),

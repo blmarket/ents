@@ -104,5 +104,9 @@ pub trait QueryEdge {
     /// Returns up to 100 edges matching the query criteria, sorted by (sort_key, destination).
     /// For ascending order, edges are returned where (sort_key, destination) > cursor.
     /// For descending order, edges are returned where (sort_key, destination) < cursor.
-    fn find_edges(&self, source: Id, query: EdgeQuery) -> Result<Vec<Edge>, DatabaseError>;
+    fn find_edges(
+        &self,
+        source: Id,
+        query: EdgeQuery,
+    ) -> Result<Vec<Edge>, DatabaseError>;
 }

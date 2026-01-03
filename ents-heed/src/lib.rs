@@ -18,8 +18,8 @@ use std::sync::Mutex;
 
 use byteorder::{BigEndian, ByteOrder};
 use ents::{
-    DatabaseError, Edge, EdgeDraft, EdgeProvider, EdgeQuery, EdgeValue, Ent, EntWithEdges, Id,
-    QueryEdge, SortOrder, Transactional,
+    DatabaseError, Edge, EdgeDraft, EdgeProvider, EdgeQuery, EdgeValue, Ent,
+    EntWithEdges, Id, QueryEdge, SortOrder, Transactional,
 };
 use heed::types::{Bytes, Str};
 use heed::{Database, Env, EnvOpenOptions, RwTxn};
@@ -42,7 +42,10 @@ impl HeedEnv {
     /// # Arguments
     /// * `path` - Directory path for the LMDB environment
     /// * `map_size` - Maximum size of the database in bytes (default: 1GB)
-    pub fn open<P: AsRef<Path>>(path: P, map_size: Option<usize>) -> Result<Self, DatabaseError> {
+    pub fn open<P: AsRef<Path>>(
+        path: P,
+        map_size: Option<usize>,
+    ) -> Result<Self, DatabaseError> {
         let path = path.as_ref();
         fs::create_dir_all(path).map_err(|e| DatabaseError::Other {
             source: Box::new(e),
@@ -69,11 +72,11 @@ impl HeedEnv {
                 source: Box::new(e),
             })?;
 
-        let edges: Database<Bytes, Bytes> =
-            env.create_database(&mut wtxn, Some("edges"))
-                .map_err(|e| DatabaseError::Other {
-                    source: Box::new(e),
-                })?;
+        let edges: Database<Bytes, Bytes> = env
+            .create_database(&mut wtxn, Some("edges"))
+            .map_err(|e| DatabaseError::Other {
+                source: Box::new(e),
+            })?;
 
         wtxn.commit().map_err(|e| DatabaseError::Other {
             source: Box::new(e),
@@ -104,12 +107,13 @@ impl HeedEnv {
 
     /// Allocates the next entity ID using snowflake algorithm.
     fn next_id(&self) -> Result<Id, DatabaseError> {
-        let mut generator = self.id_generator.lock().map_err(|e| DatabaseError::Other {
-            source: Box::new(std::io::Error::other(format!(
-                "Failed to lock ID generator: {}",
-                e
-            ))),
-        })?;
+        let mut generator =
+            self.id_generator.lock().map_err(|e| DatabaseError::Other {
+                source: Box::new(std::io::Error::other(format!(
+                    "Failed to lock ID generator: {}",
+                    e
+                ))),
+            })?;
         Ok(generator.generate())
     }
 }
@@ -130,8 +134,10 @@ impl<'env> Txn<'env> {
         let mut wtxn = self.txn.borrow_mut();
 
         let data_json =
-            serde_json::to_string(&(ent as &dyn Ent)).map_err(|e| DatabaseError::Other {
-                source: Box::new(e),
+            serde_json::to_string(&(ent as &dyn Ent)).map_err(|e| {
+                DatabaseError::Other {
+                    source: Box::new(e),
+                }
             })?;
 
         self.env
@@ -162,9 +168,10 @@ impl<'env> Txn<'env> {
             }
         }
 
-        let data_json = serde_json::to_string(&ent).map_err(|e| DatabaseError::Other {
-            source: Box::new(e),
-        })?;
+        let data_json =
+            serde_json::to_string(&ent).map_err(|e| DatabaseError::Other {
+                source: Box::new(e),
+            })?;
 
         self.env
             .entities
@@ -176,7 +183,12 @@ impl<'env> Txn<'env> {
         Ok(true)
     }
 
-    fn delete_edge(&self, source: Id, sort_key: &[u8], dest: Id) -> Result<(), DatabaseError> {
+    fn delete_edge(
+        &self,
+        source: Id,
+        sort_key: &[u8],
+        dest: Id,
+    ) -> Result<(), DatabaseError> {
         let key = make_edge_key(source, sort_key, dest);
         self.env
             .edges
@@ -191,18 +203,15 @@ impl<'env> Txn<'env> {
 impl<'env> Transactional for Txn<'env> {
     fn get(&self, id: Id) -> Result<Option<Box<dyn Ent>>, DatabaseError> {
         let txn = self.txn.borrow();
-        match self
-            .env
-            .entities
-            .get(&txn, &id)
-            .map_err(|e| DatabaseError::Other {
+        match self.env.entities.get(&txn, &id).map_err(|e| {
+            DatabaseError::Other {
                 source: Box::new(e),
-            })? {
+            }
+        })? {
             Some(data_json) => {
-                let mut ent = serde_json::from_str::<Box<dyn Ent>>(data_json).map_err(|e| {
-                    DatabaseError::Other {
-                        source: Box::new(e),
-                    }
+                let mut ent = serde_json::from_str::<Box<dyn Ent>>(data_json)
+                    .map_err(|e| DatabaseError::Other {
+                    source: Box::new(e),
                 })?;
                 ent.set_id(id);
                 Ok(Some(ent))
@@ -211,7 +220,10 @@ impl<'env> Transactional for Txn<'env> {
         }
     }
 
-    fn create<E: Ent + EntWithEdges>(&self, mut ent: E) -> Result<Id, DatabaseError> {
+    fn create<E: Ent + EntWithEdges>(
+        &self,
+        mut ent: E,
+    ) -> Result<Id, DatabaseError> {
         let id = self.insert(&ent)?;
         ent.set_id(id);
         ent.setup_edges(self).map_err(|e| DatabaseError::Other {
@@ -220,18 +232,19 @@ impl<'env> Transactional for Txn<'env> {
         Ok(id)
     }
 
-    fn delete<E: Ent + EntWithEdges>(&self, id: Id) -> Result<(), DatabaseError> {
+    fn delete<E: Ent + EntWithEdges>(
+        &self,
+        id: Id,
+    ) -> Result<(), DatabaseError> {
         // Delete edges where this entity is the destination
         // We need to scan all edges and delete matching ones
         let to_delete: Vec<Vec<u8>> = {
             let txn = self.txn.borrow();
-            let iter = self
-                .env
-                .edges
-                .iter(&txn)
-                .map_err(|e| DatabaseError::Other {
+            let iter = self.env.edges.iter(&txn).map_err(|e| {
+                DatabaseError::Other {
                     source: Box::new(e),
-                })?;
+                }
+            })?;
 
             let mut keys = Vec::new();
             for result in iter {
@@ -341,7 +354,11 @@ impl<'env> Transactional for Txn<'env> {
 }
 
 impl<'env> QueryEdge for Txn<'env> {
-    fn find_edges(&self, source: Id, query: EdgeQuery) -> Result<Vec<Edge>, DatabaseError> {
+    fn find_edges(
+        &self,
+        source: Id,
+        query: EdgeQuery,
+    ) -> Result<Vec<Edge>, DatabaseError> {
         let txn = self.txn.borrow();
         find_edges_internal(&txn, &self.env.edges, source, query)
     }
@@ -384,11 +401,11 @@ fn find_edges_internal(
     BigEndian::write_u64(&mut prefix, source);
 
     // Get iterator
-    let iter = edges_db
-        .prefix_iter(txn, &prefix)
-        .map_err(|e| DatabaseError::Other {
+    let iter = edges_db.prefix_iter(txn, &prefix).map_err(|e| {
+        DatabaseError::Other {
             source: Box::new(e),
-        })?;
+        }
+    })?;
 
     // Collect all matching edges
     let mut all_edges: Vec<Edge> = Vec::new();
@@ -404,7 +421,8 @@ fn find_edges_internal(
         }
 
         // Apply edge name filter if specified
-        if !query.edge_names.is_empty() && !query.edge_names.contains(&sort_key) {
+        if !query.edge_names.is_empty() && !query.edge_names.contains(&sort_key)
+        {
             continue;
         }
 
@@ -414,10 +432,14 @@ fn find_edges_internal(
     // Sort based on order
     match query.order {
         SortOrder::Asc => {
-            all_edges.sort_by(|a, b| (&a.sort_key, a.dest).cmp(&(&b.sort_key, b.dest)));
+            all_edges.sort_by(|a, b| {
+                (&a.sort_key, a.dest).cmp(&(&b.sort_key, b.dest))
+            });
         }
         SortOrder::Desc => {
-            all_edges.sort_by(|a, b| (&b.sort_key, b.dest).cmp(&(&a.sort_key, a.dest)));
+            all_edges.sort_by(|a, b| {
+                (&b.sort_key, b.dest).cmp(&(&a.sort_key, a.dest))
+            });
         }
     }
 
@@ -462,7 +484,8 @@ mod tests {
         let dest = 67890u64;
 
         let key = make_edge_key(source, sort_key, dest);
-        let (parsed_source, parsed_sort_key, parsed_dest) = parse_edge_key(&key);
+        let (parsed_source, parsed_sort_key, parsed_dest) =
+            parse_edge_key(&key);
 
         assert_eq!(parsed_source, source);
         assert_eq!(parsed_sort_key, sort_key);

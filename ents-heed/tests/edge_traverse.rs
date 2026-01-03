@@ -1,5 +1,6 @@
 use ents::{
-    DatabaseError, Edge, EdgeCursor, EdgeQuery, QueryEdge, EdgeValue, Id, Transactional,
+    DatabaseError, Edge, EdgeCursor, EdgeQuery, EdgeValue, Id, QueryEdge,
+    Transactional,
 };
 use ents_heed::HeedEnv;
 use tempfile::tempdir;
@@ -12,7 +13,10 @@ fn setup_env() -> (tempfile::TempDir, HeedEnv) {
 }
 
 /// Helper to insert test edges
-fn insert_edges(txn: &impl Transactional, edges: &[(Id, &[u8], Id)]) -> Result<(), DatabaseError> {
+fn insert_edges(
+    txn: &impl Transactional,
+    edges: &[(Id, &[u8], Id)],
+) -> Result<(), DatabaseError> {
     for (source, sort_key, dest) in edges {
         txn.create_edge(EdgeValue {
             source: *source,

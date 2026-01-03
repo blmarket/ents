@@ -23,7 +23,8 @@ impl TestCaseRunner for HeedCaseRunner {
         let txn = self.env.write_txn()?;
         // Since the txn is consumed immediately in the closure, and the closure
         // executes synchronously, the env will still be alive during txn's use.
-        let txn_static = unsafe { std::mem::transmute::<Txn<'_>, Txn<'static>>(txn) };
+        let txn_static =
+            unsafe { std::mem::transmute::<Txn<'_>, Txn<'static>>(txn) };
         f(txn_static)
     }
 }

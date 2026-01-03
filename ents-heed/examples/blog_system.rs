@@ -6,8 +6,9 @@
 //! Run with: cargo run --example blog_system
 
 use ents::{
-    DraftError, EdgeDraft, EdgeProvider, EdgeQuery, EdgeValue, Ent, EntExt, EntMutationError,
-    EntWithEdges, Id, NullEdgeProvider, QueryEdge, Transactional,
+    DraftError, EdgeDraft, EdgeProvider, EdgeQuery, EdgeValue, Ent, EntExt,
+    EntMutationError, EntWithEdges, Id, NullEdgeProvider, QueryEdge,
+    Transactional,
 };
 use ents_heed::HeedEnv;
 use serde::{Deserialize, Serialize};
@@ -91,7 +92,10 @@ struct BlogPostEdgeDraft {
 }
 
 impl EdgeDraft for BlogPostEdgeDraft {
-    fn check<T: Transactional>(self, _txn: &T) -> Result<Vec<EdgeValue>, DraftError> {
+    fn check<T: Transactional>(
+        self,
+        _txn: &T,
+    ) -> Result<Vec<EdgeValue>, DraftError> {
         Ok(vec![EdgeValue::new(
             self.post_id,
             b"authored_by".to_vec(),
@@ -212,13 +216,17 @@ fn main() -> anyhow::Result<()> {
 
         // Find all edges from posts to alice
         for post_id in [post1_id, post2_id, post3_id] {
-            let edges = txn.find_edges(post_id, EdgeQuery::asc(&[b"authored_by"]))?;
+            let edges =
+                txn.find_edges(post_id, EdgeQuery::asc(&[b"authored_by"]))?;
 
             if !edges.is_empty() && edges[0].dest == alice_id {
                 if let Some(post_ent) = txn.get(post_id)? {
                     if post_ent.is::<BlogPost>() {
                         let post_json = serde_json::to_value(&post_ent)?;
-                        println!("  ✓ Found: {}", post_json["title"].as_str().unwrap());
+                        println!(
+                            "  ✓ Found: {}",
+                            post_json["title"].as_str().unwrap()
+                        );
                     }
                 }
             }
@@ -239,7 +247,8 @@ fn main() -> anyhow::Result<()> {
 
             // Verify edge changed
             let txn = env.write_txn()?;
-            let edges = txn.find_edges(post2_id, EdgeQuery::asc(&[b"authored_by"]))?;
+            let edges =
+                txn.find_edges(post2_id, EdgeQuery::asc(&[b"authored_by"]))?;
             if !edges.is_empty() && edges[0].dest == bob_id {
                 println!("✓ Edge updated correctly");
             }
@@ -255,7 +264,8 @@ fn main() -> anyhow::Result<()> {
         let mut bob_count = 0;
 
         for post_id in [post1_id, post2_id, post3_id] {
-            let edges = txn.find_edges(post_id, EdgeQuery::asc(&[b"authored_by"]))?;
+            let edges =
+                txn.find_edges(post_id, EdgeQuery::asc(&[b"authored_by"]))?;
             if !edges.is_empty() {
                 if edges[0].dest == alice_id {
                     alice_count += 1;
