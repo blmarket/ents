@@ -140,7 +140,7 @@ checksum = "d0881ea181b1df73ff77ffaaf9c7544ecc11e82fba9b5f27b262a3c73a332555"
 
 [[package]]
 name = "ents"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "dyn-clone",
  "serde",
@@ -150,7 +150,7 @@ dependencies = [
 
 [[package]]
 name = "ents-heed"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "anyhow",
  "byteorder",
@@ -169,7 +169,7 @@ dependencies = [
 
 [[package]]
 name = "ents-sqlite"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "anyhow",
  "dyn-clone",
@@ -186,7 +186,7 @@ dependencies = [
 
 [[package]]
 name = "ents-test-suite"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "anyhow",
  "ents",
