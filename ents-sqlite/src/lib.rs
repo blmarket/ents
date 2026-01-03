@@ -39,7 +39,7 @@ impl<'conn> Txn<'conn> {
                         ?4 IS NULL
                     )
                 "#,
-                params![data_json, entity_type, id as i64, expected_last_updated],
+                params![data_json, entity_type, id as i64, expected_last_updated.map(|v| v as i64)],
             )
             .map_err(|e| DatabaseError::Other {
                 source: Box::new(e),
@@ -85,7 +85,7 @@ impl<'conn> Transactional for Txn<'conn> {
             })?;
 
         stmt.query_row(params![id as i64], |row| {
-            let id: Id = row.get(0)?;
+            let id: Id = row.get::<_, i64>(0)? as Id;
             let data_json: &str = row.get_ref(1)?.as_str()?;
             let mut ret =
                 serde_json::from_str::<Box<dyn Ent>>(data_json).expect("failed to parse JSON");
@@ -125,7 +125,7 @@ impl<'conn> Transactional for Txn<'conn> {
             .map_err(|e| DatabaseError::Other {
                 source: Box::new(e),
             })?
-            .execute(params![id])
+            .execute(params![id as i64])
             .map_err(|e| DatabaseError::Other {
                 source: Box::new(e),
             })?;
@@ -139,7 +139,7 @@ impl<'conn> Transactional for Txn<'conn> {
             .map_err(|e| DatabaseError::Other {
                 source: Box::new(e),
             })?
-            .execute(params![id])
+            .execute(params![id as i64])
             .map_err(|e| DatabaseError::Other {
                 source: Box::new(e),
             })?;
@@ -258,7 +258,7 @@ impl<'conn> QueryEdge for Txn<'conn> {
 
         // Build parameters
         let mut params: Vec<Box<dyn r2d2_sqlite::rusqlite::ToSql>> = Vec::new();
-        params.push(Box::new(source));
+        params.push(Box::new(source as i64));
 
         for name in query.edge_names {
             params.push(Box::new(name.to_vec()));
@@ -266,7 +266,7 @@ impl<'conn> QueryEdge for Txn<'conn> {
 
         if let Some(cursor) = query.cursor {
             params.push(Box::new(cursor.sort_key.to_vec()));
-            params.push(Box::new(cursor.destination));
+            params.push(Box::new(cursor.destination as i64));
         }
 
         let params_refs: Vec<&dyn r2d2_sqlite::rusqlite::ToSql> =
