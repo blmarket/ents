@@ -62,6 +62,18 @@ pub trait EdgeProvider<E: Ent + ?Sized> {
     fn draft(ent: &E) -> Self::Draft;
 }
 
+impl<E: Ent, T1, T2> EdgeProvider<E> for (T1, T2)
+where
+    T1: EdgeProvider<E>,
+    T2: EdgeProvider<E>,
+{
+    type Draft = (T1::Draft, T2::Draft);
+
+    fn draft(ent: &E) -> Self::Draft {
+        (T1::draft(ent), T2::draft(ent))
+    }
+}
+
 pub trait EntWithEdges: Ent {
     type EdgeProvider: EdgeProvider<Self>;
 
