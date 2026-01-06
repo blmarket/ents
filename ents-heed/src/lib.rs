@@ -18,8 +18,8 @@ use std::sync::Mutex;
 
 use byteorder::{BigEndian, ByteOrder};
 use ents::{
-    DatabaseError, Edge, EdgeDraft, EdgeProvider, EdgeQuery, EdgeValue, Ent,
-    EntWithEdges, Id, QueryEdge, SortOrder, Transactional,
+    DatabaseError, Edge, EdgeDraft, EdgeQuery, EdgeValue, Ent, EntWithEdges,
+    Id, IncomingEdgeProvider, QueryEdge, SortOrder, Transactional,
 };
 use heed::types::{Bytes, Str};
 use heed::{Database, Env, EnvOpenOptions, RwTxn};

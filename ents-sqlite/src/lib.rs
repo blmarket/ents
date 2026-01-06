@@ -2,7 +2,7 @@ use std::borrow::BorrowMut;
 
 use ents::Edge;
 use ents::{
-    DatabaseError, EdgeDraft, EdgeProvider, EdgeQuery, EdgeValue, Ent,
+    DatabaseError, EdgeDraft, IncomingEdgeProvider, EdgeQuery, EdgeValue, Ent,
     EntWithEdges, Id, QueryEdge, SortOrder, Transactional,
 };
 use r2d2_sqlite::rusqlite::{params, OptionalExtension, Transaction};

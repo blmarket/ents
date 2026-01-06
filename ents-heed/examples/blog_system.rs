@@ -6,7 +6,7 @@
 //! Run with: cargo run --example blog_system
 
 use ents::{
-    DraftError, EdgeDraft, EdgeProvider, EdgeQuery, EdgeValue, Ent, EntExt,
+    DraftError, EdgeDraft, IncomingEdgeProvider, EdgeQuery, EdgeValue, Ent, EntExt,
     EntMutationError, EntWithEdges, Id, NullEdgeProvider, QueryEdge,
     Transactional,
 };
@@ -105,7 +105,7 @@ impl EdgeDraft for BlogPostEdgeDraft {
 }
 
 struct BlogPostEdgeProvider;
-impl EdgeProvider<BlogPost> for BlogPostEdgeProvider {
+impl IncomingEdgeProvider<BlogPost> for BlogPostEdgeProvider {
     type Draft = BlogPostEdgeDraft;
     fn draft(ent: &BlogPost) -> Self::Draft {
         BlogPostEdgeDraft {

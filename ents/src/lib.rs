@@ -1,11 +1,12 @@
-pub mod edge_provider;
-pub mod query_edge;
+mod edge_provider;
+mod query_edge;
 
 use std::any::Any;
 
 pub use edge_provider::{
-    DraftError, EdgeDraft, EdgeProvider, EdgeValue, EntWithEdges,
-    NullEdgeDraft, NullEdgeProvider, Transactional,
+    DraftError, EdgeDraft, EdgeValue, EntWithEdges, IncomingEdgeProvider,
+    IncomingEdgeProvider as EdgeProvider, NullEdgeDraft, NullEdgeProvider,
+    Transactional,
 };
 pub use query_edge::{Edge, EdgeCursor, EdgeQuery, QueryEdge, SortOrder};
 

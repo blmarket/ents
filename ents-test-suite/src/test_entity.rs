@@ -1,5 +1,5 @@
 use ents::{
-    DraftError, EdgeDraft, EdgeProvider, EdgeQuery, EdgeValue, Ent,
+    DraftError, EdgeDraft, IncomingEdgeProvider, EdgeQuery, EdgeValue, Ent,
     EntMutationError, EntWithEdges, Id, NullEdgeProvider, Transactional,
 };
 use serde::{Deserialize, Serialize};
@@ -172,7 +172,7 @@ impl EdgeDraft for UniqueEmailDraft {
 /// Edge provider for UserWithUniqueEmail that enforces unique email
 pub struct UserWithUniqueEmailEdgeProvider;
 
-impl EdgeProvider<UserWithUniqueEmail> for UserWithUniqueEmailEdgeProvider {
+impl IncomingEdgeProvider<UserWithUniqueEmail> for UserWithUniqueEmailEdgeProvider {
     type Draft = UniqueEmailDraft;
 
     fn draft(ent: &UserWithUniqueEmail) -> Self::Draft {
@@ -299,7 +299,7 @@ impl EdgeDraft for TagsEdgeDraft {
 /// Edge provider for Post that creates both author and tag edges
 pub struct PostEdgeProvider;
 
-impl EdgeProvider<Post> for PostEdgeProvider {
+impl IncomingEdgeProvider<Post> for PostEdgeProvider {
     type Draft = (AuthorEdgeDraft, TagsEdgeDraft);
 
     fn draft(ent: &Post) -> Self::Draft {

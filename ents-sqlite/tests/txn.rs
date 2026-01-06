@@ -1,5 +1,5 @@
 use ents::{
-    DraftError, EdgeDraft, EdgeProvider, EdgeQuery, EdgeValue, Ent,
+    DraftError, EdgeDraft, IncomingEdgeProvider, EdgeQuery, EdgeValue, Ent,
     EntExt as _, EntMutationError, EntWithEdges, Id, NullEdgeProvider,
     QueryEdge, Transactional,
 };
@@ -165,7 +165,7 @@ impl EdgeDraft for TestPersonEdgeDraft {
 }
 
 struct TestPersonEdgeProvider;
-impl EdgeProvider<TestPerson> for TestPersonEdgeProvider {
+impl IncomingEdgeProvider<TestPerson> for TestPersonEdgeProvider {
     type Draft = TestPersonEdgeDraft;
     fn draft(ent: &TestPerson) -> Self::Draft {
         TestPersonEdgeDraft {

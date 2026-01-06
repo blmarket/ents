@@ -49,6 +49,7 @@ pub enum DraftError {
     ValidationFailed(String),
 }
 
+/// Draft of edge before validation. Extends PartialEq which can be used to skip revalidation.
 pub trait EdgeDraft: PartialEq {
     fn check<T: Transactional>(
         self,
@@ -56,16 +57,19 @@ pub trait EdgeDraft: PartialEq {
     ) -> Result<Vec<EdgeValue>, DraftError>;
 }
 
-pub trait EdgeProvider<E: Ent + ?Sized> {
+/// Declares edges whose destination is the entity
+pub trait IncomingEdgeProvider<E: Ent + ?Sized> {
+    /// Generated edge draft type
     type Draft: EdgeDraft;
 
+    /// Draft edges from the entity value
     fn draft(ent: &E) -> Self::Draft;
 }
 
-impl<E: Ent, T1, T2> EdgeProvider<E> for (T1, T2)
+impl<E: Ent, T1, T2> IncomingEdgeProvider<E> for (T1, T2)
 where
-    T1: EdgeProvider<E>,
-    T2: EdgeProvider<E>,
+    T1: IncomingEdgeProvider<E>,
+    T2: IncomingEdgeProvider<E>,
 {
     type Draft = (T1::Draft, T2::Draft);
 
@@ -75,7 +79,7 @@ where
 }
 
 pub trait EntWithEdges: Ent {
-    type EdgeProvider: EdgeProvider<Self>;
+    type EdgeProvider: IncomingEdgeProvider<Self>;
 
     fn setup_edges<T: Transactional>(&self, txn: &T) -> Result<(), DraftError> {
         let draft = Self::EdgeProvider::draft(self);
@@ -101,7 +105,7 @@ impl EdgeDraft for NullEdgeDraft {
 /// A no-op edge provider for entities that don't have edges.
 pub struct NullEdgeProvider;
 
-impl<E: Ent> EdgeProvider<E> for NullEdgeProvider {
+impl<E: Ent> IncomingEdgeProvider<E> for NullEdgeProvider {
     type Draft = NullEdgeDraft;
 
     fn draft(_ent: &E) -> Self::Draft {
