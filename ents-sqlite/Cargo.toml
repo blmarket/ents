@@ -8,7 +8,7 @@ description = "Ents database implementation using sqlite3"
 repository = "https://github.com/blmarket/ents"
 
 [dependencies]
-ents = { version = "0.1.0", path = "../ents" }
+ents = { version = "0.2.0", path = "../ents" }
 r2d2_sqlite = "0.32.0"
 r2d2 = "0.8.10"
 serde = { version = "1", features = ["derive"] }
