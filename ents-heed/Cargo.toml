@@ -26,10 +26,6 @@ chrono = "0.4"
 ents-test-suite = { path = "../ents-test-suite" }
 
 [[example]]
-name = "basic_crud"
-path = "examples/basic_crud.rs"
-
-[[example]]
 name = "blog_system"
 path = "examples/blog_system.rs"
 
