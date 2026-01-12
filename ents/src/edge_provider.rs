@@ -78,18 +78,6 @@ where
     }
 }
 
-pub trait EntWithEdges: Ent {
-    type EdgeProvider: IncomingEdgeProvider<Self>;
-
-    fn setup_edges<T: Transactional>(&self, txn: &T) -> Result<(), DraftError> {
-        let draft = Self::EdgeProvider::draft(self);
-        for edge in draft.check(txn)? {
-            txn.create_edge(edge)?;
-        }
-        Ok(())
-    }
-}
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct NullEdgeDraft;
 
@@ -129,9 +117,9 @@ impl<E: Ent> IncomingEdgeProvider<E> for NullEdgeProvider {
 pub trait Transactional: QueryEdge {
     fn get(&self, id: Id) -> Result<Option<Box<dyn Ent>>, DatabaseError>;
 
-    fn create<E: EntWithEdges>(&self, ent: E) -> Result<Id, DatabaseError>;
+    fn create<E: Ent>(&self, ent: E) -> Result<Id, DatabaseError>;
 
-    fn delete<E: EntWithEdges>(&self, id: Id) -> Result<(), DatabaseError>;
+    fn delete<E: Ent>(&self, id: Id) -> Result<(), DatabaseError>;
 
     fn create_edge(&self, edge: EdgeValue) -> Result<(), DatabaseError>;
 
@@ -141,7 +129,7 @@ pub trait Transactional: QueryEdge {
         mutator: F,
     ) -> Result<bool, DatabaseError>
     where
-        T: EntWithEdges,
+        T: Ent,
         F: FnOnce(&mut T),
         B: BorrowMut<T>;
 

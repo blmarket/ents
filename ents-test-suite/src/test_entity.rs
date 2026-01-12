@@ -1,6 +1,6 @@
 use ents::{
-    DraftError, EdgeDraft, IncomingEdgeProvider, EdgeQuery, EdgeValue, Ent,
-    EntMutationError, EntWithEdges, Id, NullEdgeProvider, Transactional,
+    DraftError, EdgeDraft, EdgeQuery, EdgeValue, Ent, EntMutationError, Id,
+    IncomingEdgeProvider, NullEdgeProvider, Transactional,
 };
 use serde::{Deserialize, Serialize};
 
@@ -15,6 +15,8 @@ pub struct TestEntity {
 
 #[typetag::serde]
 impl Ent for TestEntity {
+    type EdgeProvider = NullEdgeProvider;
+
     fn id(&self) -> Id {
         self.id
     }
@@ -34,10 +36,6 @@ impl Ent for TestEntity {
             .as_micros() as u64;
         Ok(())
     }
-}
-
-impl EntWithEdges for TestEntity {
-    type EdgeProvider = NullEdgeProvider;
 }
 
 impl TestEntity {
@@ -62,6 +60,8 @@ pub struct User {
 
 #[typetag::serde]
 impl Ent for User {
+    type EdgeProvider = NullEdgeProvider;
+
     fn id(&self) -> Id {
         self.id
     }
@@ -81,10 +81,6 @@ impl Ent for User {
             .as_micros() as u64;
         Ok(())
     }
-}
-
-impl EntWithEdges for User {
-    type EdgeProvider = NullEdgeProvider;
 }
 
 impl User {
@@ -109,6 +105,8 @@ pub struct UserWithUniqueEmail {
 
 #[typetag::serde]
 impl Ent for UserWithUniqueEmail {
+    type EdgeProvider = UserWithUniqueEmailEdgeProvider;
+
     fn id(&self) -> Id {
         self.id
     }
@@ -172,7 +170,9 @@ impl EdgeDraft for UniqueEmailDraft {
 /// Edge provider for UserWithUniqueEmail that enforces unique email
 pub struct UserWithUniqueEmailEdgeProvider;
 
-impl IncomingEdgeProvider<UserWithUniqueEmail> for UserWithUniqueEmailEdgeProvider {
+impl IncomingEdgeProvider<UserWithUniqueEmail>
+    for UserWithUniqueEmailEdgeProvider
+{
     type Draft = UniqueEmailDraft;
 
     fn draft(ent: &UserWithUniqueEmail) -> Self::Draft {
@@ -181,10 +181,6 @@ impl IncomingEdgeProvider<UserWithUniqueEmail> for UserWithUniqueEmailEdgeProvid
             email: ent.email.clone(),
         }
     }
-}
-
-impl EntWithEdges for UserWithUniqueEmail {
-    type EdgeProvider = UserWithUniqueEmailEdgeProvider;
 }
 
 impl UserWithUniqueEmail {
@@ -209,6 +205,8 @@ pub struct Tag {
 
 #[typetag::serde]
 impl Ent for Tag {
+    type EdgeProvider = NullEdgeProvider;
+
     fn id(&self) -> Id {
         self.id
     }
@@ -228,10 +226,6 @@ impl Ent for Tag {
             .as_micros() as u64;
         Ok(())
     }
-}
-
-impl EntWithEdges for Tag {
-    type EdgeProvider = NullEdgeProvider;
 }
 
 impl Tag {
@@ -318,6 +312,8 @@ impl IncomingEdgeProvider<Post> for PostEdgeProvider {
 
 #[typetag::serde]
 impl Ent for Post {
+    type EdgeProvider = PostEdgeProvider;
+
     fn id(&self) -> Id {
         self.id
     }
@@ -337,10 +333,6 @@ impl Ent for Post {
             .as_micros() as u64;
         Ok(())
     }
-}
-
-impl EntWithEdges for Post {
-    type EdgeProvider = PostEdgeProvider;
 }
 
 impl Post {

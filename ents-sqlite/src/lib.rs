@@ -1,9 +1,8 @@
 use std::borrow::BorrowMut;
 
-use ents::Edge;
 use ents::{
-    DatabaseError, EdgeDraft, IncomingEdgeProvider, EdgeQuery, EdgeValue, Ent,
-    EntWithEdges, Id, QueryEdge, SortOrder, Transactional,
+    DatabaseError, Edge, EdgeDraft, EdgeQuery, EdgeValue, Ent, Id,
+    IncomingEdgeProvider, QueryEdge, SortOrder, Transactional,
 };
 use r2d2_sqlite::rusqlite::{params, OptionalExtension, Transaction};
 
@@ -123,10 +122,7 @@ impl<'conn> Transactional for Txn<'conn> {
         Ok(())
     }
 
-    fn delete<E: Ent + EntWithEdges>(
-        &self,
-        id: Id,
-    ) -> Result<(), DatabaseError> {
+    fn delete<E: Ent>(&self, id: Id) -> Result<(), DatabaseError> {
         self.0
             .prepare_cached(
                 r#"
@@ -158,7 +154,7 @@ impl<'conn> Transactional for Txn<'conn> {
         Ok(())
     }
 
-    fn update<T: EntWithEdges, F: FnOnce(&mut T), B: BorrowMut<T>>(
+    fn update<T: Ent, F: FnOnce(&mut T), B: BorrowMut<T>>(
         &self,
         mut ent0: B,
         mutator: F,
@@ -218,10 +214,7 @@ impl<'conn> Transactional for Txn<'conn> {
         Ok(updated)
     }
 
-    fn create<E: Ent + EntWithEdges>(
-        &self,
-        mut ent: E,
-    ) -> Result<Id, DatabaseError> {
+    fn create<E: Ent>(&self, mut ent: E) -> Result<Id, DatabaseError> {
         let id = self.insert(&ent)?;
         ent.set_id(id);
         ent.setup_edges(self).map_err(|e| DatabaseError::Other {

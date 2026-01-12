@@ -1,7 +1,7 @@
 use ents::{
-    DraftError, EdgeDraft, IncomingEdgeProvider, EdgeQuery, EdgeValue, Ent,
-    EntExt as _, EntMutationError, EntWithEdges, Id, NullEdgeProvider,
-    QueryEdge, Transactional,
+    DraftError, EdgeDraft, EdgeQuery, EdgeValue, Ent, EntExt as _,
+    EntMutationError, Id, IncomingEdgeProvider, NullEdgeProvider, QueryEdge,
+    Transactional,
 };
 use ents_heed::HeedEnv;
 use serde::{Deserialize, Serialize};
@@ -17,6 +17,8 @@ struct TestEntity {
 
 #[typetag::serde]
 impl Ent for TestEntity {
+    type EdgeProvider = NullEdgeProvider;
+
     fn id(&self) -> Id {
         self.id
     }
@@ -30,10 +32,6 @@ impl Ent for TestEntity {
         self.last_updated = 12345; // Test value
         Ok(())
     }
-}
-
-impl EntWithEdges for TestEntity {
-    type EdgeProvider = NullEdgeProvider;
 }
 
 impl TestEntity {
@@ -80,6 +78,8 @@ struct TestPerson {
 
 #[typetag::serde]
 impl Ent for TestPerson {
+    type EdgeProvider = TestPersonEdgeProvider;
+
     fn id(&self) -> Id {
         self.id
     }
@@ -174,10 +174,6 @@ impl IncomingEdgeProvider<TestPerson> for TestPersonEdgeProvider {
     }
 }
 
-impl EntWithEdges for TestPerson {
-    type EdgeProvider = TestPersonEdgeProvider;
-}
-
 impl TestPerson {
     pub fn set_lives_in_link(&mut self, lives_in_link: Id) {
         self.lives_in_link = lives_in_link;
@@ -194,6 +190,8 @@ struct TestCity {
 
 #[typetag::serde]
 impl Ent for TestCity {
+    type EdgeProvider = NullEdgeProvider;
+
     fn id(&self) -> Id {
         self.id
     }
@@ -207,10 +205,6 @@ impl Ent for TestCity {
         self.last_updated = 12345;
         Ok(())
     }
-}
-
-impl EntWithEdges for TestCity {
-    type EdgeProvider = NullEdgeProvider;
 }
 
 impl TestCity {

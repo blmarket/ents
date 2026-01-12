@@ -18,8 +18,8 @@ use std::sync::Mutex;
 
 use byteorder::{BigEndian, ByteOrder};
 use ents::{
-    DatabaseError, Edge, EdgeDraft, EdgeQuery, EdgeValue, Ent, EntWithEdges,
-    Id, IncomingEdgeProvider, QueryEdge, SortOrder, Transactional,
+    DatabaseError, Edge, EdgeDraft, EdgeQuery, EdgeValue, Ent, Id,
+    IncomingEdgeProvider, QueryEdge, SortOrder, Transactional,
 };
 use heed::types::{Bytes, Str};
 use heed::{Database, Env, EnvOpenOptions, RwTxn};
@@ -220,10 +220,7 @@ impl<'env> Transactional for Txn<'env> {
         }
     }
 
-    fn create<E: Ent + EntWithEdges>(
-        &self,
-        mut ent: E,
-    ) -> Result<Id, DatabaseError> {
+    fn create<E: Ent>(&self, mut ent: E) -> Result<Id, DatabaseError> {
         let id = self.insert(&ent)?;
         ent.set_id(id);
         ent.setup_edges(self).map_err(|e| DatabaseError::Other {
@@ -232,10 +229,7 @@ impl<'env> Transactional for Txn<'env> {
         Ok(id)
     }
 
-    fn delete<E: Ent + EntWithEdges>(
-        &self,
-        id: Id,
-    ) -> Result<(), DatabaseError> {
+    fn delete<E: Ent>(&self, id: Id) -> Result<(), DatabaseError> {
         // Delete edges where this entity is the destination
         // We need to scan all edges and delete matching ones
         let to_delete: Vec<Vec<u8>> = {
@@ -290,7 +284,7 @@ impl<'env> Transactional for Txn<'env> {
         Ok(())
     }
 
-    fn update<T: EntWithEdges, F: FnOnce(&mut T), B: BorrowMut<T>>(
+    fn update<T: Ent, F: FnOnce(&mut T), B: BorrowMut<T>>(
         &self,
         mut ent0: B,
         mutator: F,

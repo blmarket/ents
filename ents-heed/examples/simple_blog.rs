@@ -4,9 +4,7 @@
 //!
 //! Run with: cargo run --example simple_blog
 
-use ents::{
-    Ent, EntMutationError, EntWithEdges, Id, NullEdgeProvider, Transactional,
-};
+use ents::{Ent, EntMutationError, Id, NullEdgeProvider, Transactional};
 use ents_heed::HeedEnv;
 use serde::{Deserialize, Serialize};
 
@@ -22,6 +20,8 @@ struct BlogPost {
 
 #[typetag::serde]
 impl Ent for BlogPost {
+    type EdgeProvider = NullEdgeProvider;
+
     fn id(&self) -> Id {
         self.id
     }
@@ -38,10 +38,6 @@ impl Ent for BlogPost {
             .as_micros() as u64;
         Ok(())
     }
-}
-
-impl EntWithEdges for BlogPost {
-    type EdgeProvider = NullEdgeProvider;
 }
 
 impl BlogPost {

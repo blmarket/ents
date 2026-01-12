@@ -4,9 +4,8 @@ mod query_edge;
 use std::any::Any;
 
 pub use edge_provider::{
-    DraftError, EdgeDraft, EdgeValue, EntWithEdges, IncomingEdgeProvider,
-    IncomingEdgeProvider as EdgeProvider, NullEdgeDraft, NullEdgeProvider,
-    Transactional,
+    DraftError, EdgeDraft, EdgeValue, IncomingEdgeProvider, NullEdgeDraft,
+    NullEdgeProvider, Transactional,
 };
 pub use query_edge::{Edge, EdgeCursor, EdgeQuery, QueryEdge, SortOrder};
 
@@ -36,10 +35,25 @@ pub enum EntMutationError {
 
 #[typetag::serde(tag = "type")]
 pub trait Ent: Any + dyn_clone::DynClone + Send + Sync {
+    type EdgeProvider: IncomingEdgeProvider<Self>
+    where
+        Self: Sized;
+
     fn id(&self) -> Id;
     fn set_id(&mut self, id: Id);
     fn last_updated(&self) -> u64;
     fn mark_updated(&mut self) -> Result<(), EntMutationError>;
+
+    fn setup_edges<T: Transactional>(&self, txn: &T) -> Result<(), DraftError>
+    where
+        Self: Sized,
+    {
+        let draft = Self::EdgeProvider::draft(self);
+        for edge in draft.check(txn)? {
+            txn.create_edge(edge)?;
+        }
+        Ok(())
+    }
 }
 
 dyn_clone::clone_trait_object!(Ent);

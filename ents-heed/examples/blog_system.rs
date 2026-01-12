@@ -6,9 +6,8 @@
 //! Run with: cargo run --example blog_system
 
 use ents::{
-    DraftError, EdgeDraft, IncomingEdgeProvider, EdgeQuery, EdgeValue, Ent, EntExt,
-    EntMutationError, EntWithEdges, Id, NullEdgeProvider, QueryEdge,
-    Transactional,
+    DraftError, EdgeDraft, EdgeQuery, EdgeValue, Ent, EntExt, EntMutationError,
+    Id, IncomingEdgeProvider, NullEdgeProvider, QueryEdge, Transactional,
 };
 use ents_heed::HeedEnv;
 use serde::{Deserialize, Serialize};
@@ -23,6 +22,8 @@ struct Author {
 
 #[typetag::serde]
 impl Ent for Author {
+    type EdgeProvider = NullEdgeProvider;
+
     fn id(&self) -> Id {
         self.id
     }
@@ -39,10 +40,6 @@ impl Ent for Author {
             .as_micros() as u64;
         Ok(())
     }
-}
-
-impl EntWithEdges for Author {
-    type EdgeProvider = NullEdgeProvider;
 }
 
 impl Author {
@@ -67,6 +64,8 @@ struct BlogPost {
 
 #[typetag::serde]
 impl Ent for BlogPost {
+    type EdgeProvider = BlogPostEdgeProvider;
+
     fn id(&self) -> Id {
         self.id
     }
@@ -113,10 +112,6 @@ impl IncomingEdgeProvider<BlogPost> for BlogPostEdgeProvider {
             author_id: ent.author_id,
         }
     }
-}
-
-impl EntWithEdges for BlogPost {
-    type EdgeProvider = BlogPostEdgeProvider;
 }
 
 impl BlogPost {
