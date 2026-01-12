@@ -2,7 +2,8 @@ mod test_entity;
 
 pub use test_entity::{Post, Tag, TestEntity, User, UserWithUniqueEmail};
 
-use ents::{EdgeQuery, EntExt, Id, QueryEdge, ReadEnt, Transactional};
+use ents::{EdgeQuery, EdgeValue, EntExt, QueryEdge, ReadEnt, Transactional};
+use ents_admin::{AdminEdgeByDest, AuditError};
 
 pub trait TestCaseRunner {
     type Tx: Transactional;
@@ -14,6 +15,23 @@ pub trait TestCaseRunner {
 
 pub trait TestSuiteRunner: Clone {
     type CaseRunner: TestCaseRunner;
+
+    fn create(&self) -> anyhow::Result<Self::CaseRunner>;
+}
+
+/// Trait for test case runners that support AuditEntEdges functionality.
+/// This requires the transaction type to implement AdminEdgeByDest in addition to Transactional.
+pub trait AdminTestCaseRunner {
+    type Tx: AdminEdgeByDest;
+
+    fn execute<F, R>(&mut self, f: F) -> anyhow::Result<R>
+    where
+        F: FnOnce(Self::Tx) -> anyhow::Result<R>;
+}
+
+/// Trait for test suite runners that support AuditEntEdges tests.
+pub trait AdminTestSuiteRunner: Clone {
+    type CaseRunner: AdminTestCaseRunner;
 
     fn create(&self) -> anyhow::Result<Self::CaseRunner>;
 }
@@ -82,38 +100,37 @@ pub fn test_relationships<R: TestSuiteRunner>(r: &R) -> anyhow::Result<()> {
         txn.commit()?;
 
         // Now query the relationships
+        // Note: With IncomingEdgeProvider, edges point TO the Post (Post is destination)
+        // So we query from the source entities (User, Tags) to find the Post
         let mut runner2 = r.create()?;
         runner2.execute(|txn| {
-            // Find the post's author
+            // Find author's posts (User --[authored]--> Post)
             let author_edges =
-                txn.find_edges(post_id, EdgeQuery::asc(&[b"author"]))?;
+                txn.find_edges(user_id, EdgeQuery::asc(&[b"authored"]))?;
             assert_eq!(
                 author_edges.len(),
                 1,
-                "Post should have exactly one author"
+                "User should have authored exactly one post"
             );
             assert_eq!(
-                author_edges[0].dest, user_id,
-                "Author edge should point to the correct user"
+                author_edges[0].dest, post_id,
+                "Author edge should point to the correct post"
             );
 
-            // Find the post's tags
-            let tag_edges =
-                txn.find_edges(post_id, EdgeQuery::asc(&[b"tag"]))?;
-            assert_eq!(
-                tag_edges.len(),
-                3,
-                "Post should have exactly three tags"
-            );
-
-            let mut tag_ids: Vec<Id> =
-                tag_edges.iter().map(|e| e.dest).collect();
-            tag_ids.sort();
-            let expected_tags = vec![tag1_id, tag2_id, tag3_id];
-            assert_eq!(
-                tag_ids, expected_tags,
-                "Tag edges should point to the correct tags"
-            );
+            // Find each tag's posts (Tag --[tagged]--> Post)
+            for &tid in &[tag1_id, tag2_id, tag3_id] {
+                let tag_edges =
+                    txn.find_edges(tid, EdgeQuery::asc(&[b"tagged"]))?;
+                assert_eq!(
+                    tag_edges.len(),
+                    1,
+                    "Each tag should tag exactly one post"
+                );
+                assert_eq!(
+                    tag_edges[0].dest, post_id,
+                    "Tag edge should point to the correct post"
+                );
+            }
 
             // Verify we can retrieve the entities
             let retrieved_user = txn.get(user_id)?;
@@ -575,4 +592,614 @@ pub fn test_concurrent_updates<R: TestSuiteRunner>(
         txn.commit()?;
         Ok(())
     })
+}
+
+// ============================================================================
+// AuditEntEdges Test Suite
+// ============================================================================
+
+/// Test that audit succeeds for an entity with correct edges.
+pub fn test_audit_success<R: AdminTestSuiteRunner>(
+    r: &R,
+) -> anyhow::Result<()> {
+    println!("  Testing audit success case...");
+
+    // First, create entities with proper edges
+    let mut runner1 = r.create()?;
+    let (user_id, tag_id, post_id) = runner1.execute(|txn| {
+        let user =
+            User::new("auditor".to_string(), "auditor@example.com".to_string());
+        let user_id = txn.create(user)?;
+
+        let tag = Tag::new("testing".to_string(), "#00ff00".to_string());
+        let tag_id = txn.create(tag)?;
+
+        let post = Post::new(
+            "Test Post".to_string(),
+            "Content for audit test".to_string(),
+            user_id,
+            vec![tag_id],
+        );
+        let post_id = txn.create(post)?;
+
+        txn.commit()?;
+        Ok((user_id, tag_id, post_id))
+    })?;
+
+    // Now audit the Post - edges should match exactly
+    let mut runner2 = r.create()?;
+    runner2.execute(|txn| {
+        let result = txn.audit_ent_edges::<Post>(post_id);
+        match result {
+            Ok(()) => {
+                println!("    Audit passed for Post with correct edges");
+            }
+            Err(e) => {
+                return Err(anyhow::anyhow!(
+                    "Audit should have succeeded: {}",
+                    e
+                ));
+            }
+        }
+        // Transaction is dropped (not committed), database unchanged
+        Ok(())
+    })?;
+
+    // Verify database is unchanged by checking edges still exist
+    let mut runner3 = r.create()?;
+    runner3.execute(|txn| {
+        // Check author edge: User --[authored]--> Post
+        let author_edges =
+            txn.find_edges(user_id, EdgeQuery::asc(&[b"authored"]))?;
+        assert_eq!(author_edges.len(), 1, "Author edge should still exist");
+        assert_eq!(author_edges[0].dest, post_id);
+
+        // Check tag edge: Tag --[tagged]--> Post
+        let tag_edges = txn.find_edges(tag_id, EdgeQuery::asc(&[b"tagged"]))?;
+        assert_eq!(tag_edges.len(), 1, "Tag edge should still exist");
+        assert_eq!(tag_edges[0].dest, post_id);
+
+        txn.commit()?;
+        Ok(())
+    })?;
+
+    // Also audit User and Tag (no edges expected since they use NullEdgeProvider)
+    let mut runner4 = r.create()?;
+    runner4.execute(|txn| {
+        let user_result = txn.audit_ent_edges::<User>(user_id);
+        assert!(user_result.is_ok(), "User audit should succeed (no edges)");
+
+        let tag_result = txn.audit_ent_edges::<Tag>(tag_id);
+        assert!(tag_result.is_ok(), "Tag audit should succeed (no edges)");
+
+        Ok(())
+    })?;
+
+    Ok(())
+}
+
+/// Test that audit returns EntityNotFound for non-existent entity.
+pub fn test_audit_entity_not_found<R: AdminTestSuiteRunner>(
+    r: &R,
+) -> anyhow::Result<()> {
+    println!("  Testing audit entity not found...");
+
+    let mut runner = r.create()?;
+    runner.execute(|txn| {
+        let non_existent_id = 999999999;
+        let result = txn.audit_ent_edges::<Post>(non_existent_id);
+
+        match result {
+            Err(AuditError::EntityNotFound(id)) => {
+                assert_eq!(id, non_existent_id);
+                println!("    Correctly returned EntityNotFound for id {}", id);
+            }
+            Ok(()) => {
+                return Err(anyhow::anyhow!(
+                    "Audit should have failed with EntityNotFound"
+                ));
+            }
+            Err(e) => {
+                return Err(anyhow::anyhow!(
+                    "Expected EntityNotFound, got: {}",
+                    e
+                ));
+            }
+        }
+        Ok(())
+    })
+}
+
+/// Test that audit returns UnexpectedEntityType when entity type doesn't match.
+pub fn test_audit_unexpected_entity_type<R: AdminTestSuiteRunner>(
+    r: &R,
+) -> anyhow::Result<()> {
+    println!("  Testing audit unexpected entity type...");
+
+    // Create a User
+    let mut runner1 = r.create()?;
+    let user_id = runner1.execute(|txn| {
+        let user =
+            User::new("typetest".to_string(), "type@example.com".to_string());
+        let id = txn.create(user)?;
+        txn.commit()?;
+        Ok(id)
+    })?;
+
+    // Try to audit the User as a Post - should fail with UnexpectedEntityType
+    let mut runner2 = r.create()?;
+    runner2.execute(|txn| {
+        let result = txn.audit_ent_edges::<Post>(user_id);
+
+        match result {
+            Err(AuditError::UnexpectedEntityType(id, type_name)) => {
+                assert_eq!(id, user_id);
+                println!("    Correctly returned UnexpectedEntityType: id={}, expected={}", id, type_name);
+            }
+            Ok(()) => {
+                return Err(anyhow::anyhow!("Audit should have failed with UnexpectedEntityType"));
+            }
+            Err(e) => {
+                return Err(anyhow::anyhow!("Expected UnexpectedEntityType, got: {}", e));
+            }
+        }
+        Ok(())
+    })
+}
+
+/// Test that audit returns EdgeMismatch when edges don't match.
+pub fn test_audit_edge_mismatch_missing_edge<R: AdminTestSuiteRunner>(
+    r: &R,
+) -> anyhow::Result<()> {
+    println!("  Testing audit edge mismatch (missing edge)...");
+
+    // Create entities with edges
+    let mut runner1 = r.create()?;
+    let (user_id, _tag_id, post_id) = runner1.execute(|txn| {
+        let user = User::new(
+            "mismatch_test".to_string(),
+            "mismatch@example.com".to_string(),
+        );
+        let user_id = txn.create(user)?;
+
+        let tag = Tag::new("mismatch".to_string(), "#ff0000".to_string());
+        let tag_id = txn.create(tag)?;
+
+        let post = Post::new(
+            "Mismatch Test".to_string(),
+            "Content".to_string(),
+            user_id,
+            vec![tag_id],
+        );
+        let post_id = txn.create(post)?;
+
+        txn.commit()?;
+        Ok((user_id, tag_id, post_id))
+    })?;
+
+    // Manually delete one of the incoming edges to create a mismatch
+    let mut runner2 = r.create()?;
+    runner2.execute(|txn| {
+        // Remove the tag edge: Tag --[tagged]--> Post
+        txn.remove_edges_by_dest(post_id)?;
+        // Re-add only the author edge
+        txn.create_edge(EdgeValue::new(
+            user_id,
+            b"authored".to_vec(),
+            post_id,
+        ))?;
+        txn.commit()?;
+        Ok(())
+    })?;
+
+    // Now audit - should fail because the tag edge is missing
+    let mut runner3 = r.create()?;
+    runner3.execute(|txn| {
+        let result = txn.audit_ent_edges::<Post>(post_id);
+
+        match result {
+            Err(AuditError::EdgeMismatch { existing, drafted }) => {
+                println!("    Correctly returned EdgeMismatch");
+                println!("      existing edges: {:?}", existing.len());
+                println!("      drafted edges: {:?}", drafted.len());
+                // existing has 1 edge (author only), drafted has 2 (author + tag)
+                assert_eq!(
+                    existing.len(),
+                    1,
+                    "Should have 1 existing edge (author only)"
+                );
+                assert_eq!(
+                    drafted.len(),
+                    2,
+                    "Should draft 2 edges (author + tag)"
+                );
+            }
+            Ok(()) => {
+                return Err(anyhow::anyhow!(
+                    "Audit should have failed with EdgeMismatch"
+                ));
+            }
+            Err(e) => {
+                return Err(anyhow::anyhow!(
+                    "Expected EdgeMismatch, got: {}",
+                    e
+                ));
+            }
+        }
+        Ok(())
+    })
+}
+
+/// Test that audit returns EdgeMismatch when there are extra edges.
+pub fn test_audit_edge_mismatch_extra_edge<R: AdminTestSuiteRunner>(
+    r: &R,
+) -> anyhow::Result<()> {
+    println!("  Testing audit edge mismatch (extra edge)...");
+
+    // Create entities
+    let mut runner1 = r.create()?;
+    let (_user_id, post_id) = runner1.execute(|txn| {
+        let user = User::new(
+            "extra_test".to_string(),
+            "extra@example.com".to_string(),
+        );
+        let user_id = txn.create(user)?;
+
+        // Create post with no tags
+        let post = Post::new(
+            "Extra Edge Test".to_string(),
+            "Content".to_string(),
+            user_id,
+            vec![], // No tags
+        );
+        let post_id = txn.create(post)?;
+
+        txn.commit()?;
+        Ok((user_id, post_id))
+    })?;
+
+    // Manually add an extra edge that shouldn't exist
+    let mut runner2 = r.create()?;
+    runner2.execute(|txn| {
+        // Add an extra edge that the Post doesn't know about
+        txn.create_edge(EdgeValue::new(12345, b"spurious".to_vec(), post_id))?;
+        txn.commit()?;
+        Ok(())
+    })?;
+
+    // Now audit - should fail because of the extra edge
+    let mut runner3 = r.create()?;
+    runner3.execute(|txn| {
+        let result = txn.audit_ent_edges::<Post>(post_id);
+
+        match result {
+            Err(AuditError::EdgeMismatch { existing, drafted }) => {
+                println!("    Correctly returned EdgeMismatch");
+                println!("      existing edges: {:?}", existing.len());
+                println!("      drafted edges: {:?}", drafted.len());
+                // existing has 2 edges (author + spurious), drafted has 1 (author only)
+                assert_eq!(
+                    existing.len(),
+                    2,
+                    "Should have 2 existing edges (author + spurious)"
+                );
+                assert_eq!(
+                    drafted.len(),
+                    1,
+                    "Should draft 1 edge (author only)"
+                );
+            }
+            Ok(()) => {
+                return Err(anyhow::anyhow!(
+                    "Audit should have failed with EdgeMismatch"
+                ));
+            }
+            Err(e) => {
+                return Err(anyhow::anyhow!(
+                    "Expected EdgeMismatch, got: {}",
+                    e
+                ));
+            }
+        }
+        Ok(())
+    })
+}
+
+/// Test that audit returns EdgeMismatch when edge content differs.
+pub fn test_audit_edge_mismatch_wrong_content<R: AdminTestSuiteRunner>(
+    r: &R,
+) -> anyhow::Result<()> {
+    println!("  Testing audit edge mismatch (wrong edge content)...");
+
+    // Create entities
+    let mut runner1 = r.create()?;
+    let (_user_id, other_user_id, post_id) = runner1.execute(|txn| {
+        let user = User::new(
+            "correct_user".to_string(),
+            "correct@example.com".to_string(),
+        );
+        let user_id = txn.create(user)?;
+
+        let other_user = User::new(
+            "wrong_user".to_string(),
+            "wrong@example.com".to_string(),
+        );
+        let other_user_id = txn.create(other_user)?;
+
+        // Create post with user as author
+        let post = Post::new(
+            "Wrong Content Test".to_string(),
+            "Content".to_string(),
+            user_id, // Post thinks this is the author
+            vec![],
+        );
+        let post_id = txn.create(post)?;
+
+        txn.commit()?;
+        Ok((user_id, other_user_id, post_id))
+    })?;
+
+    // Replace the author edge with one pointing to the wrong user
+    let mut runner2 = r.create()?;
+    runner2.execute(|txn| {
+        // Remove correct edge and add wrong one
+        txn.remove_edges_by_dest(post_id)?;
+        // Add edge from wrong user
+        txn.create_edge(EdgeValue::new(
+            other_user_id,
+            b"authored".to_vec(),
+            post_id,
+        ))?;
+        txn.commit()?;
+        Ok(())
+    })?;
+
+    // Now audit - should fail because author edge has wrong source
+    let mut runner3 = r.create()?;
+    runner3.execute(|txn| {
+        let result = txn.audit_ent_edges::<Post>(post_id);
+
+        match result {
+            Err(AuditError::EdgeMismatch { existing, drafted }) => {
+                println!("    Correctly returned EdgeMismatch");
+                // Both have 1 edge, but they differ in source
+                assert_eq!(existing.len(), 1);
+                assert_eq!(drafted.len(), 1);
+                assert_ne!(
+                    existing[0].source, drafted[0].source,
+                    "Sources should differ"
+                );
+                println!("      existing source: {}", existing[0].source);
+                println!("      drafted source: {}", drafted[0].source);
+            }
+            Ok(()) => {
+                return Err(anyhow::anyhow!(
+                    "Audit should have failed with EdgeMismatch"
+                ));
+            }
+            Err(e) => {
+                return Err(anyhow::anyhow!(
+                    "Expected EdgeMismatch, got: {}",
+                    e
+                ));
+            }
+        }
+        Ok(())
+    })
+}
+
+/// Test that audit correctly handles entities with NullEdgeProvider.
+pub fn test_audit_null_edge_provider<R: AdminTestSuiteRunner>(
+    r: &R,
+) -> anyhow::Result<()> {
+    println!("  Testing audit with NullEdgeProvider...");
+
+    // Create a TestEntity (which uses NullEdgeProvider)
+    let mut runner1 = r.create()?;
+    let entity_id = runner1.execute(|txn| {
+        let entity = TestEntity::new("null_edge_test".to_string(), 42);
+        let id = txn.create(entity)?;
+        txn.commit()?;
+        Ok(id)
+    })?;
+
+    // Audit should succeed - no edges expected
+    let mut runner2 = r.create()?;
+    runner2.execute(|txn| {
+        let result = txn.audit_ent_edges::<TestEntity>(entity_id);
+        match result {
+            Ok(()) => {
+                println!("    Audit passed for entity with NullEdgeProvider");
+            }
+            Err(e) => {
+                return Err(anyhow::anyhow!(
+                    "Audit should have succeeded: {}",
+                    e
+                ));
+            }
+        }
+        Ok(())
+    })?;
+
+    // Now add a spurious edge to the entity
+    let mut runner3 = r.create()?;
+    runner3.execute(|txn| {
+        txn.create_edge(EdgeValue::new(
+            99999,
+            b"spurious".to_vec(),
+            entity_id,
+        ))?;
+        txn.commit()?;
+        Ok(())
+    })?;
+
+    // Audit should now fail because there's an edge that shouldn't exist
+    let mut runner4 = r.create()?;
+    runner4.execute(|txn| {
+        let result = txn.audit_ent_edges::<TestEntity>(entity_id);
+        match result {
+            Err(AuditError::EdgeMismatch { existing, drafted }) => {
+                println!("    Correctly detected spurious edge on NullEdgeProvider entity");
+                assert_eq!(existing.len(), 1, "Should have 1 spurious edge");
+                assert_eq!(drafted.len(), 0, "NullEdgeProvider drafts no edges");
+            }
+            Ok(()) => {
+                return Err(anyhow::anyhow!("Audit should have failed with EdgeMismatch"));
+            }
+            Err(e) => {
+                return Err(anyhow::anyhow!("Expected EdgeMismatch, got: {}", e));
+            }
+        }
+        Ok(())
+    })
+}
+
+/// Test that fix_ent_edges corrects edge mismatches.
+pub fn test_fix_ent_edges<R: AdminTestSuiteRunner>(
+    r: &R,
+) -> anyhow::Result<()> {
+    println!("  Testing fix_ent_edges...");
+
+    // Create entities with proper edges
+    let mut runner1 = r.create()?;
+    let (user_id, tag_id, post_id) = runner1.execute(|txn| {
+        let user =
+            User::new("fixer".to_string(), "fixer@example.com".to_string());
+        let user_id = txn.create(user)?;
+
+        let tag = Tag::new("fixable".to_string(), "#0000ff".to_string());
+        let tag_id = txn.create(tag)?;
+
+        let post = Post::new(
+            "Fix Test Post".to_string(),
+            "Content for fix test".to_string(),
+            user_id,
+            vec![tag_id],
+        );
+        let post_id = txn.create(post)?;
+
+        txn.commit()?;
+        Ok((user_id, tag_id, post_id))
+    })?;
+
+    // Verify initial state is correct
+    let mut runner2 = r.create()?;
+    runner2.execute(|txn| {
+        let result = txn.audit_ent_edges::<Post>(post_id);
+        assert!(result.is_ok(), "Initial audit should pass");
+        Ok(())
+    })?;
+
+    // Corrupt the edges: remove tag edge and add spurious edge
+    let mut runner3 = r.create()?;
+    runner3.execute(|txn| {
+        // Remove all edges and only add the author edge (missing tag edge)
+        txn.remove_edges_by_dest(post_id)?;
+        txn.create_edge(EdgeValue::new(
+            user_id,
+            b"authored".to_vec(),
+            post_id,
+        ))?;
+        // Add a spurious edge
+        txn.create_edge(EdgeValue::new(99999, b"spurious".to_vec(), post_id))?;
+        txn.commit()?;
+        Ok(())
+    })?;
+
+    // Verify audit fails now
+    let mut runner4 = r.create()?;
+    runner4.execute(|txn| {
+        let result = txn.audit_ent_edges::<Post>(post_id);
+        match result {
+            Err(AuditError::EdgeMismatch { existing, drafted }) => {
+                println!("    Audit correctly detected mismatch before fix");
+                println!("      existing: {} edges", existing.len());
+                println!("      drafted: {} edges", drafted.len());
+            }
+            Ok(()) => {
+                return Err(anyhow::anyhow!(
+                    "Audit should have failed before fix"
+                ));
+            }
+            Err(e) => {
+                return Err(anyhow::anyhow!("Unexpected error: {}", e));
+            }
+        }
+        Ok(())
+    })?;
+
+    // Fix the edges
+    let mut runner5 = r.create()?;
+    runner5.execute(|txn| {
+        let result = txn.fix_ent_edges::<Post>(post_id);
+        match result {
+            Ok(()) => {
+                println!("    fix_ent_edges succeeded");
+            }
+            Err(e) => {
+                return Err(anyhow::anyhow!("fix_ent_edges failed: {}", e));
+            }
+        }
+        Ok(())
+    })?;
+
+    // Verify audit now passes
+    let mut runner6 = r.create()?;
+    runner6.execute(|txn| {
+        let result = txn.audit_ent_edges::<Post>(post_id);
+        match result {
+            Ok(()) => {
+                println!("    Audit passed after fix");
+            }
+            Err(e) => {
+                return Err(anyhow::anyhow!(
+                    "Audit should have passed after fix: {}",
+                    e
+                ));
+            }
+        }
+        Ok(())
+    })?;
+
+    // Verify edges are correct by querying them
+    let mut runner7 = r.create()?;
+    runner7.execute(|txn| {
+        // Check author edge: User --[authored]--> Post
+        let author_edges =
+            txn.find_edges(user_id, EdgeQuery::asc(&[b"authored"]))?;
+        assert_eq!(author_edges.len(), 1, "Should have author edge");
+        assert_eq!(
+            author_edges[0].dest, post_id,
+            "Author edge should point to post"
+        );
+
+        // Check tag edge: Tag --[tagged]--> Post
+        let tag_edges = txn.find_edges(tag_id, EdgeQuery::asc(&[b"tagged"]))?;
+        assert_eq!(tag_edges.len(), 1, "Should have tag edge");
+        assert_eq!(tag_edges[0].dest, post_id, "Tag edge should point to post");
+
+        txn.commit()?;
+        Ok(())
+    })?;
+
+    Ok(())
+}
+
+/// Run all AuditEntEdges tests.
+pub fn run_audit_tests<R: AdminTestSuiteRunner>(
+    runner: R,
+) -> anyhow::Result<()> {
+    println!("Running AuditEntEdges test cases...");
+
+    test_audit_success(&runner)?;
+    test_audit_entity_not_found(&runner)?;
+    test_audit_unexpected_entity_type(&runner)?;
+    test_audit_edge_mismatch_missing_edge(&runner)?;
+    test_audit_edge_mismatch_extra_edge(&runner)?;
+    test_audit_edge_mismatch_wrong_content(&runner)?;
+    test_audit_null_edge_provider(&runner)?;
+    test_fix_ent_edges(&runner)?;
+
+    println!("All AuditEntEdges tests passed!");
+    Ok(())
 }

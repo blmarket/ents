@@ -4,6 +4,7 @@ use ents::{
     DatabaseError, Edge, EdgeDraft, EdgeQuery, EdgeValue, Ent, Id,
     IncomingEdgeProvider, QueryEdge, ReadEnt, SortOrder, Transactional,
 };
+use ents_admin::AdminEdgeByDest;
 use r2d2_sqlite::rusqlite::{params, OptionalExtension, Transaction};
 
 pub struct Txn<'conn>(Transaction<'conn>);
@@ -229,6 +230,58 @@ impl<'conn> Transactional for Txn<'conn> {
         self.0.commit().map_err(|e| DatabaseError::Other {
             source: Box::new(e),
         })
+    }
+}
+
+impl<'conn> AdminEdgeByDest for Txn<'conn> {
+    fn find_edges_by_dest(&self, dest: Id) -> Result<Vec<Edge>, DatabaseError> {
+        let mut stmt = self
+            .0
+            .prepare("SELECT source, type, dest FROM edges WHERE dest = ?1 ORDER BY source, type")
+            .map_err(|e| DatabaseError::Other {
+                source: Box::new(e),
+            })?;
+
+        let rows = stmt
+            .query_map(params![dest as i64], |row| {
+                let source: i64 = row.get(0)?;
+                let sort_key: Vec<u8> = match row.get_ref(1)? {
+                    r2d2_sqlite::rusqlite::types::ValueRef::Text(s) => {
+                        s.to_vec()
+                    }
+                    r2d2_sqlite::rusqlite::types::ValueRef::Blob(b) => {
+                        b.to_vec()
+                    }
+                    _ => {
+                        return Err(
+                            r2d2_sqlite::rusqlite::Error::InvalidColumnType(
+                                1,
+                                "type".into(),
+                                row.get_ref(1)?.data_type(),
+                            ),
+                        )
+                    }
+                };
+                let dest: i64 = row.get(2)?;
+                Ok(Edge::new(source as Id, sort_key, dest as Id))
+            })
+            .map_err(|e| DatabaseError::Other {
+                source: Box::new(e),
+            })?;
+
+        rows.collect::<Result<Vec<_>, _>>()
+            .map_err(|e| DatabaseError::Other {
+                source: Box::new(e),
+            })
+    }
+
+    fn remove_edges_by_dest(&self, dest: Id) -> Result<(), DatabaseError> {
+        self.0
+            .execute("DELETE FROM edges WHERE dest = ?1", params![dest as i64])
+            .map_err(|e| DatabaseError::Other {
+                source: Box::new(e),
+            })?;
+        Ok(())
     }
 }
 

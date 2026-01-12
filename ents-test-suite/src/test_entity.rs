@@ -247,7 +247,6 @@ pub struct Post {
     pub last_updated: u64,
 }
 
-/// Edge draft for author relationship
 #[derive(PartialEq)]
 pub struct AuthorEdgeDraft {
     pub post_id: Id,
@@ -260,14 +259,13 @@ impl EdgeDraft for AuthorEdgeDraft {
         _txn: &T,
     ) -> Result<Vec<EdgeValue>, DraftError> {
         Ok(vec![EdgeValue::new(
-            self.post_id,
-            b"author".to_vec(),
             self.author_id,
+            b"authored".to_vec(),
+            self.post_id,
         )])
     }
 }
 
-/// Edge draft for tag relationships
 #[derive(PartialEq)]
 pub struct TagsEdgeDraft {
     pub post_id: Id,
@@ -281,7 +279,11 @@ impl EdgeDraft for TagsEdgeDraft {
     ) -> Result<Vec<EdgeValue>, DraftError> {
         let mut edges = Vec::new();
         for tag_id in self.tag_ids {
-            edges.push(EdgeValue::new(self.post_id, b"tag".to_vec(), tag_id));
+            edges.push(EdgeValue::new(
+                tag_id,
+                b"tagged".to_vec(),
+                self.post_id,
+            ));
         }
         Ok(edges)
     }

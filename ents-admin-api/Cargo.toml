@@ -1,0 +1,34 @@
+[package]
+name = "ents-admin-api"
+publish = false
+description = "HTTP API for ents entity administration"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+homepage.workspace = true
+repository.workspace = true
+
+[features]
+default = ["sqlite"]
+sqlite = ["dep:ents-sqlite", "dep:r2d2", "dep:r2d2_sqlite"]
+
+[dependencies]
+ents = { path = "../ents" }
+ents-admin = { path = "../ents-admin" }
+ents-sqlite = { path = "../ents-sqlite", optional = true }
+
+axum = "0.8"
+tokio = { version = "1", features = ["full"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2"
+tower-http = { version = "0.6", features = ["cors", "fs"] }
+r2d2 = { version = "0.8.10", optional = true }
+r2d2_sqlite = { version = "0.32.0", optional = true }
+
+[dev-dependencies]
+ents-sqlite = { path = "../ents-sqlite" }
+ents-test-suite = { path = "../ents-test-suite" }
+r2d2 = "0.8.10"
+r2d2_sqlite = "0.32.0"
+tempfile = "3"
