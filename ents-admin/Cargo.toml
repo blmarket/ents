@@ -1,0 +1,14 @@
+[package]
+name = "ents-admin"
+publish = false
+version.workspace = true
+authors.workspace = true
+edition = "2021"
+license = "MIT OR Apache-2.0"
+description = "Admin APIs for ents"
+repository = "https://github.com/blmarket/ents"
+keywords = ["ent", "entity-framework", "admin"]
+
+[dependencies]
+ents = { path = "../ents" }
+thiserror = "2"

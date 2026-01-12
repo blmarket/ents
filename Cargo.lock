@@ -149,6 +149,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "ents-admin"
+version = "0.2.0"
+dependencies = [
+ "ents",
+ "thiserror",
+]
+
+[[package]]
 name = "ents-heed"
 version = "0.2.0"
 dependencies = [

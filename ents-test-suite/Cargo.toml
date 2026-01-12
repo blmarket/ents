@@ -1,5 +1,6 @@
 [package]
 name = "ents-test-suite"
+publish = false
 version.workspace = true
 authors.workspace = true
 edition = "2021"

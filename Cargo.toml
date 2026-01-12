@@ -1,5 +1,5 @@
 [workspace]
-members = ["ents", "ents-sqlite", "ents-heed", "ents-test-suite"]
+members = ["ents", "ents-admin", "ents-sqlite", "ents-heed", "ents-test-suite"]
 resolver = "2"
 
 [workspace.package]
