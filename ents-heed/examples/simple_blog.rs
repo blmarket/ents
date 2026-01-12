@@ -4,7 +4,7 @@
 //!
 //! Run with: cargo run --example simple_blog
 
-use ents::{Ent, EntMutationError, Id, NullEdgeProvider, Transactional};
+use ents::{Ent, EntMutationError, Id, NullEdgeProvider, ReadEnt, Transactional};
 use ents_heed::HeedEnv;
 use serde::{Deserialize, Serialize};
 

@@ -1,7 +1,7 @@
 use ents::{
     DraftError, EdgeDraft, EdgeQuery, EdgeValue, Ent, EntExt as _,
     EntMutationError, Id, IncomingEdgeProvider, NullEdgeProvider, QueryEdge,
-    Transactional,
+    ReadEnt, Transactional,
 };
 use ents_heed::HeedEnv;
 use serde::{Deserialize, Serialize};
@@ -151,10 +151,7 @@ struct TestPersonEdgeDraft {
 }
 
 impl EdgeDraft for TestPersonEdgeDraft {
-    fn check<T: Transactional>(
-        self,
-        _txn: &T,
-    ) -> Result<Vec<EdgeValue>, DraftError> {
+    fn check<T: ReadEnt>(self, _txn: &T) -> Result<Vec<EdgeValue>, DraftError> {
         Ok(vec![EdgeValue::new(
             self.person_id,
             b"lives_in".to_vec(),

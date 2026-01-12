@@ -7,7 +7,8 @@
 
 use ents::{
     DraftError, EdgeDraft, EdgeQuery, EdgeValue, Ent, EntExt, EntMutationError,
-    Id, IncomingEdgeProvider, NullEdgeProvider, QueryEdge, Transactional,
+    Id, IncomingEdgeProvider, NullEdgeProvider, QueryEdge, ReadEnt,
+    Transactional,
 };
 use ents_heed::HeedEnv;
 use serde::{Deserialize, Serialize};
@@ -91,10 +92,7 @@ struct BlogPostEdgeDraft {
 }
 
 impl EdgeDraft for BlogPostEdgeDraft {
-    fn check<T: Transactional>(
-        self,
-        _txn: &T,
-    ) -> Result<Vec<EdgeValue>, DraftError> {
+    fn check<T: ReadEnt>(self, _txn: &T) -> Result<Vec<EdgeValue>, DraftError> {
         Ok(vec![EdgeValue::new(
             self.post_id,
             b"authored_by".to_vec(),

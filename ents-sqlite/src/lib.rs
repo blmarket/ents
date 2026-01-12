@@ -2,7 +2,7 @@ use std::borrow::BorrowMut;
 
 use ents::{
     DatabaseError, Edge, EdgeDraft, EdgeQuery, EdgeValue, Ent, Id,
-    IncomingEdgeProvider, QueryEdge, SortOrder, Transactional,
+    IncomingEdgeProvider, QueryEdge, ReadEnt, SortOrder, Transactional,
 };
 use r2d2_sqlite::rusqlite::{params, OptionalExtension, Transaction};
 
@@ -82,7 +82,7 @@ impl<'conn> Txn<'conn> {
     }
 }
 
-impl<'conn> Transactional for Txn<'conn> {
+impl<'conn> ReadEnt for Txn<'conn> {
     fn get(&self, id: Id) -> Result<Option<Box<dyn Ent>>, DatabaseError> {
         let mut stmt = self
             .0
@@ -104,7 +104,9 @@ impl<'conn> Transactional for Txn<'conn> {
             source: Box::new(e),
         })
     }
+}
 
+impl<'conn> Transactional for Txn<'conn> {
     fn create_edge(&self, edge: EdgeValue) -> Result<(), DatabaseError> {
         let source = edge.source;
         let sort_key = edge.sort_key;

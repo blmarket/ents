@@ -1,6 +1,6 @@
 use ents::{
     DraftError, EdgeDraft, EdgeQuery, EdgeValue, Ent, EntMutationError, Id,
-    IncomingEdgeProvider, NullEdgeProvider, Transactional,
+    IncomingEdgeProvider, NullEdgeProvider, ReadEnt,
 };
 use serde::{Deserialize, Serialize};
 
@@ -136,10 +136,7 @@ pub struct UniqueEmailDraft {
 }
 
 impl EdgeDraft for UniqueEmailDraft {
-    fn check<T: Transactional>(
-        self,
-        txn: &T,
-    ) -> Result<Vec<EdgeValue>, DraftError> {
+    fn check<T: ReadEnt>(self, txn: &T) -> Result<Vec<EdgeValue>, DraftError> {
         // Check if any existing user has this email
         let existing_edges = txn
             .find_edges(0, EdgeQuery::asc(&[b"unique_email"]))?
@@ -258,7 +255,7 @@ pub struct AuthorEdgeDraft {
 }
 
 impl EdgeDraft for AuthorEdgeDraft {
-    fn check<T: ents::Transactional>(
+    fn check<T: ents::ReadEnt>(
         self,
         _txn: &T,
     ) -> Result<Vec<EdgeValue>, DraftError> {
@@ -278,7 +275,7 @@ pub struct TagsEdgeDraft {
 }
 
 impl EdgeDraft for TagsEdgeDraft {
-    fn check<T: ents::Transactional>(
+    fn check<T: ents::ReadEnt>(
         self,
         _txn: &T,
     ) -> Result<Vec<EdgeValue>, DraftError> {

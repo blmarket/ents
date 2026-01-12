@@ -2,7 +2,7 @@ mod test_entity;
 
 pub use test_entity::{Post, Tag, TestEntity, User, UserWithUniqueEmail};
 
-use ents::{EdgeQuery, EntExt, Id, QueryEdge, Transactional};
+use ents::{EdgeQuery, EntExt, Id, QueryEdge, ReadEnt, Transactional};
 
 pub trait TestCaseRunner {
     type Tx: Transactional;

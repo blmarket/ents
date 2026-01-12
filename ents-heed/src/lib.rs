@@ -19,7 +19,7 @@ use std::sync::Mutex;
 use byteorder::{BigEndian, ByteOrder};
 use ents::{
     DatabaseError, Edge, EdgeDraft, EdgeQuery, EdgeValue, Ent, Id,
-    IncomingEdgeProvider, QueryEdge, SortOrder, Transactional,
+    IncomingEdgeProvider, QueryEdge, ReadEnt, SortOrder, Transactional,
 };
 use heed::types::{Bytes, Str};
 use heed::{Database, Env, EnvOpenOptions, RwTxn};
@@ -200,7 +200,7 @@ impl<'env> Txn<'env> {
     }
 }
 
-impl<'env> Transactional for Txn<'env> {
+impl<'env> ReadEnt for Txn<'env> {
     fn get(&self, id: Id) -> Result<Option<Box<dyn Ent>>, DatabaseError> {
         let txn = self.txn.borrow();
         match self.env.entities.get(&txn, &id).map_err(|e| {
@@ -219,7 +219,9 @@ impl<'env> Transactional for Txn<'env> {
             None => Ok(None),
         }
     }
+}
 
+impl<'env> Transactional for Txn<'env> {
     fn create<E: Ent>(&self, mut ent: E) -> Result<Id, DatabaseError> {
         let id = self.insert(&ent)?;
         ent.set_id(id);

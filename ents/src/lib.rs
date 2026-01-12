@@ -5,7 +5,7 @@ use std::any::Any;
 
 pub use edge_provider::{
     DraftError, EdgeDraft, EdgeValue, IncomingEdgeProvider, NullEdgeDraft,
-    NullEdgeProvider, Transactional,
+    NullEdgeProvider, ReadEnt, Transactional,
 };
 pub use query_edge::{Edge, EdgeCursor, EdgeQuery, QueryEdge, SortOrder};
 

@@ -51,10 +51,7 @@ pub enum DraftError {
 
 /// Draft of edge before validation. Extends PartialEq which can be used to skip revalidation.
 pub trait EdgeDraft: PartialEq {
-    fn check<T: Transactional>(
-        self,
-        txn: &T,
-    ) -> Result<Vec<EdgeValue>, DraftError>;
+    fn check<T: ReadEnt>(self, txn: &T) -> Result<Vec<EdgeValue>, DraftError>;
 }
 
 /// Declares edges whose destination is the entity
@@ -82,10 +79,7 @@ where
 pub struct NullEdgeDraft;
 
 impl EdgeDraft for NullEdgeDraft {
-    fn check<T: Transactional + QueryEdge>(
-        self,
-        _txn: &T,
-    ) -> Result<Vec<EdgeValue>, DraftError> {
+    fn check<T: ReadEnt>(self, _txn: &T) -> Result<Vec<EdgeValue>, DraftError> {
         Ok(Vec::new())
     }
 }
@@ -101,22 +95,11 @@ impl<E: Ent> IncomingEdgeProvider<E> for NullEdgeProvider {
     }
 }
 
-/// A trait for abstracting database transactions and operations.
-///
-/// This trait provides a unified interface for performing CRUD (Create, Read, Update, Delete)
-/// operations on entities and edges, as well as querying relationships.
-/// It abstracts over the underlying storage and transaction management, allowing
-/// code to work with entities without being tightly coupled to a specific database backend.
-///
-/// # Key Features
-///
-/// - **Entity Management**: `insert`, `get`, `remove`, `update` entities.
-/// - **Edge Management**: `add_edge`, `remove_edge`.
-/// - **Querying**: Find edges (`find_edge`, `find_edges_in`), find entities by type (`find_by_type`).
-/// - **Concurrency Control**: `update` supports optimistic concurrency control via CAS (Compare-And-Set).
-pub trait Transactional: QueryEdge {
+pub trait ReadEnt: QueryEdge {
     fn get(&self, id: Id) -> Result<Option<Box<dyn Ent>>, DatabaseError>;
+}
 
+pub trait Transactional: ReadEnt {
     fn create<E: Ent>(&self, ent: E) -> Result<Id, DatabaseError>;
 
     fn delete<E: Ent>(&self, id: Id) -> Result<(), DatabaseError>;
@@ -141,7 +124,7 @@ where
     T1: EdgeDraft,
     T2: EdgeDraft,
 {
-    fn check<Trans: Transactional>(
+    fn check<Trans: ReadEnt>(
         self,
         txn: &Trans,
     ) -> Result<Vec<EdgeValue>, DraftError> {
