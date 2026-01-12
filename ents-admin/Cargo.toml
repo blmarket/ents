@@ -1,6 +1,5 @@
 [package]
 name = "ents-admin"
-publish = false
 version.workspace = true
 authors.workspace = true
 edition = "2021"
