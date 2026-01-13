@@ -1,6 +1,7 @@
 [package]
 name = "ents-admin-api"
 description = "HTTP API for ents entity administration"
+license = "MIT OR Apache-2.0"
 version.workspace = true
 edition.workspace = true
 authors.workspace = true
