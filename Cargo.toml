@@ -3,7 +3,7 @@ members = ["ents", "ents-admin", "ents-admin-api", "ents-sqlite", "ents-heed", "
 resolver = "2"
 
 [workspace.package]
-version = "0.3.2"
+version = "0.3.3"
 homepage = "https://github.com/blmarket/ents"
 repository = "https://github.com/blmarket/ents"
 edition = "2021"
