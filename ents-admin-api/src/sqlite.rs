@@ -528,4 +528,12 @@ impl AdminBackend for SqlitePool {
 
         fix_fn(txn, id)
     }
+
+    fn known_types(&self) -> Vec<String> {
+        self.type_registry
+            .available_types()
+            .into_iter()
+            .map(|s| s.to_string())
+            .collect()
+    }
 }

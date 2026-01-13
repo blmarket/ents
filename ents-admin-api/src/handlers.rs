@@ -138,6 +138,14 @@ pub async fn delete_entity<T: AdminBackend>(
     Ok(Json(()))
 }
 
+// Type discovery
+
+pub async fn get_known_types<T: AdminBackend>(
+    State(backend): State<T>,
+) -> Json<Vec<String>> {
+    Json(backend.known_types())
+}
+
 // Edge audit operations
 
 pub async fn audit_entity_edges<T: AdminBackend>(

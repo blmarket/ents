@@ -1,6 +1,6 @@
-import { useState } from 'react'
-import { useMutation } from '@tanstack/react-query'
-import { auditEntityEdges, fixEntityEdges } from '../api'
+import { useState, useEffect } from 'react'
+import { useQuery, useMutation } from '@tanstack/react-query'
+import { auditEntityEdges, fixEntityEdges, getKnownTypes } from '../api'
 import type { AuditResult, EdgeInfo } from '../api/types'
 
 interface EdgeDebugPanelProps {
@@ -8,11 +8,22 @@ interface EdgeDebugPanelProps {
   entityType: string
 }
 
-const KNOWN_TYPES = ['TestEntity', 'User', 'Post', 'Tag']
-
 export default function EdgeDebugPanel({ entityId, entityType }: EdgeDebugPanelProps) {
-  const [selectedType, setSelectedType] = useState(entityType || KNOWN_TYPES[0])
+  const { data: knownTypes = [], isLoading: typesLoading } = useQuery({
+    queryKey: ['knownTypes'],
+    queryFn: getKnownTypes,
+    staleTime: Infinity,
+  })
+
+  const [selectedType, setSelectedType] = useState(entityType)
   const [auditResult, setAuditResult] = useState<AuditResult | null>(null)
+
+  // Set default type when types are loaded and no entityType prop is provided
+  useEffect(() => {
+    if (!selectedType && knownTypes.length > 0) {
+      setSelectedType(knownTypes[0])
+    }
+  }, [knownTypes, selectedType])
 
   const auditMutation = useMutation({
     mutationFn: () => auditEntityEdges(entityId, selectedType),
@@ -52,15 +63,22 @@ export default function EdgeDebugPanel({ entityId, entityType }: EdgeDebugPanelP
           <select
             value={selectedType}
             onChange={(e) => setSelectedType(e.target.value)}
-            className="px-2 py-1 text-sm bg-gray-700 border border-gray-600 rounded text-white"
+            disabled={typesLoading || knownTypes.length === 0}
+            className="px-2 py-1 text-sm bg-gray-700 border border-gray-600 rounded text-white disabled:opacity-50"
           >
-            {KNOWN_TYPES.map((t) => (
-              <option key={t} value={t}>{t}</option>
-            ))}
+            {typesLoading ? (
+              <option>Loading...</option>
+            ) : knownTypes.length === 0 ? (
+              <option>No types available</option>
+            ) : (
+              knownTypes.map((t) => (
+                <option key={t} value={t}>{t}</option>
+              ))
+            )}
           </select>
           <button
             onClick={() => auditMutation.mutate()}
-            disabled={auditMutation.isPending}
+            disabled={auditMutation.isPending || typesLoading || !selectedType}
             className="px-3 py-1 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded transition-colors disabled:opacity-50"
           >
             {auditMutation.isPending ? 'Auditing...' : 'Audit Edges'}

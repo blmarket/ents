@@ -10,6 +10,11 @@ async function handleResponse<T>(response: Response): Promise<T> {
   return response.json()
 }
 
+export async function getKnownTypes(): Promise<string[]> {
+  const response = await fetch(`${API_BASE}/api/types`)
+  return handleResponse<string[]>(response)
+}
+
 export async function getEntity(id: number): Promise<Entity> {
   const response = await fetch(`${API_BASE}/api/entities/${id}`)
   return handleResponse<Entity>(response)

@@ -25,6 +25,8 @@ pub fn admin_router<T: AdminBackend>(backend: T) -> Router {
         .allow_headers(Any);
 
     Router::new()
+        // Type discovery
+        .route("/api/types", get(handlers::get_known_types::<T>))
         // Entity CRUD
         .route("/api/entities", post(handlers::create_entity::<T>))
         .route(
