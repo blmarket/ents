@@ -1,6 +1,5 @@
 [package]
 name = "ents-admin-api"
-publish = false
 description = "HTTP API for ents entity administration"
 version.workspace = true
 edition.workspace = true
