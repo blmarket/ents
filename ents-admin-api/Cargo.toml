@@ -12,9 +12,9 @@ default = ["sqlite"]
 sqlite = ["dep:ents-sqlite", "dep:r2d2", "dep:r2d2_sqlite"]
 
 [dependencies]
-ents = { path = "../ents" }
-ents-admin = { path = "../ents-admin" }
-ents-sqlite = { path = "../ents-sqlite", optional = true }
+ents.workspace = true
+ents-admin.workspace = true
+ents-sqlite = { workspace = true, optional = true }
 
 axum = "0.8"
 tokio = { version = "1", features = ["full"] }
@@ -26,8 +26,8 @@ r2d2 = { version = "0.8.10", optional = true }
 r2d2_sqlite = { version = "0.32.0", optional = true }
 
 [dev-dependencies]
-ents-sqlite = { path = "../ents-sqlite" }
-ents-test-suite = { path = "../ents-test-suite" }
+ents-sqlite.workspace = true
+ents-test-suite.workspace = true
 r2d2 = "0.8.10"
 r2d2_sqlite = "0.32.0"
 tempfile = "3"

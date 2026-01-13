@@ -9,5 +9,5 @@ repository = "https://github.com/blmarket/ents"
 keywords = ["ent", "entity-framework", "admin"]
 
 [dependencies]
-ents = { path = "../ents", version = "0.3.0" }
+ents.workspace = true
 thiserror = "2"

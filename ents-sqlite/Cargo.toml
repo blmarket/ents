@@ -8,8 +8,8 @@ description = "Ents database implementation using sqlite3"
 repository = "https://github.com/blmarket/ents"
 
 [dependencies]
-ents = { version = "0.3.0", path = "../ents" }
-ents-admin = { version = "0.3.0", path = "../ents-admin" }
+ents.workspace = true
+ents-admin.workspace = true
 r2d2_sqlite = "0.32.0"
 r2d2 = "0.8.10"
 serde = { version = "1", features = ["derive"] }
@@ -20,5 +20,5 @@ anyhow = "1"
 
 [dev-dependencies]
 typetag = "0.2"
-ents-test-suite = { path = "../ents-test-suite" }
+ents-test-suite.workspace = true
 tempfile = "3"
