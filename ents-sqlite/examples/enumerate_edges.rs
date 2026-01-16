@@ -87,10 +87,7 @@ pub struct UniqueUsernameDraft {
 }
 
 impl EdgeDraft for UniqueUsernameDraft {
-    fn check<T: ReadEnt + QueryEdge>(
-        self,
-        txn: &T,
-    ) -> Result<Vec<EdgeValue>, DraftError> {
+    fn check<T: ReadEnt>(self, txn: &T) -> Result<Vec<EdgeValue>, DraftError> {
         // Check if any existing edge has this username as the sort key
         let username_bytes = self.username.as_bytes();
         let existing_edges = txn.find_edges(
@@ -432,7 +429,7 @@ impl<E: Ent> TypedEdgeEnumerator<E> {
     }
 }
 
-impl<E: Ent + 'static> EdgeEnumerator for TypedEdgeEnumerator<E> {
+impl<E: Ent> EdgeEnumerator for TypedEdgeEnumerator<E> {
     fn enumerate_edges(
         &self,
         ent: &Box<dyn Ent>,
@@ -465,7 +462,7 @@ impl EdgeProviderRegistry {
     }
 
     /// Register an entity type with its EdgeProvider
-    pub fn register<E: Ent + 'static>(&mut self) {
+    pub fn register<E: Ent>(&mut self) {
         let type_id = TypeId::of::<E>();
         let enumerator = Box::new(TypedEdgeEnumerator::<E>::new());
         self.enumerators.insert(type_id, enumerator);

@@ -1,7 +1,7 @@
 [package]
 name = "ents-test-suite"
-version.workspace = true
-authors.workspace = true
+version = "0.4.0"
+authors = ["blmarket@gmail.com"]
 edition = "2021"
 license = "MIT OR Apache-2.0"
 description = "Ents database implementation test suite"

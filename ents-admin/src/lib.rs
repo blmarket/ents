@@ -25,8 +25,6 @@ pub enum AuditError {
     Database(#[from] DatabaseError),
 }
 
-/// Admin trait for querying and manipulating edges by destination.
-/// This provides administrative operations for edge management.
 pub trait AdminEnt: Transactional {
     fn find_edges_by_dest(&self, dest: Id) -> Result<Vec<Edge>, DatabaseError>;
 
@@ -108,4 +106,17 @@ pub trait AdminEnt: Transactional {
 
         Ok(())
     }
+
+    /// List entities of a specific type with cursor-based pagination.
+    ///
+    /// # Arguments
+    /// * `entity_type` - The string name of the entity type to list
+    /// * `cursor` - Optional ID cursor. If provided, returns entities with ID > cursor
+    /// * `limit` - Maximum number of entities to return
+    fn list_entities(
+        &self,
+        entity_type: &str,
+        cursor: Option<Id>,
+        limit: usize,
+    ) -> Result<Vec<Box<dyn Ent>>, DatabaseError>;
 }

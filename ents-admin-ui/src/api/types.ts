@@ -14,6 +14,11 @@ export interface EdgeInfo {
   dest: Id
 }
 
+export interface EdgesResponse {
+  edges: EdgeInfo[]
+  has_more: boolean
+}
+
 export interface CreateResponse {
   id: Id
   entity: Entity

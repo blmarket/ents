@@ -1,4 +1,4 @@
-import type { Entity, EdgeInfo, CreateResponse, AuditResult } from './types'
+import type { Entity, EdgeInfo, EdgesResponse, CreateResponse, AuditResult } from './types'
 
 const API_BASE = import.meta.env.VITE_API_URL || ''
 
@@ -20,10 +20,10 @@ export async function getEntity(id: number): Promise<Entity> {
   return handleResponse<Entity>(response)
 }
 
-export async function getEntityEdges(id: number, name?: string): Promise<EdgeInfo[]> {
+export async function getEntityEdges(id: number, name?: string): Promise<EdgesResponse> {
   const params = name ? `?name=${encodeURIComponent(name)}` : ''
   const response = await fetch(`${API_BASE}/api/entities/${id}/edges${params}`)
-  return handleResponse<EdgeInfo[]>(response)
+  return handleResponse<EdgesResponse>(response)
 }
 
 export async function getIncomingEdges(id: number): Promise<EdgeInfo[]> {
@@ -76,4 +76,18 @@ export async function fixEntityEdges(id: number, typeName: string): Promise<void
     const error = await response.json().catch(() => ({ error: response.statusText }))
     throw new Error(error.error || `HTTP ${response.status}`)
   }
+}
+
+export async function listEntities(
+  entityType: string,
+  limit?: number,
+  cursor?: number
+): Promise<Entity[]> {
+  const params = new URLSearchParams()
+  params.set('type', entityType)
+  if (limit) params.set('limit', limit.toString())
+  if (cursor) params.set('cursor', cursor.toString())
+
+  const response = await fetch(`${API_BASE}/api/entities?${params.toString()}`)
+  return handleResponse<Entity[]>(response)
 }

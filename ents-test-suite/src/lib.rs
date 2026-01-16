@@ -212,9 +212,7 @@ pub fn test_unique_constraints<R: TestSuiteRunner>(
     }
 }
 
-pub fn run_all_tests<R: TestSuiteRunner + Clone>(
-    runner: R,
-) -> anyhow::Result<()> {
+pub fn run_all_tests<R: TestSuiteRunner>(runner: R) -> anyhow::Result<()> {
     println!("Running all test cases...");
 
     test_basic_create(&runner)?;
@@ -1185,12 +1183,59 @@ pub fn test_fix_ent_edges<R: AdminTestSuiteRunner>(
     Ok(())
 }
 
+pub fn test_list_entities<R: AdminTestSuiteRunner>(
+    r: &R,
+) -> anyhow::Result<()> {
+    println!("  Testing list entities...");
+
+    // Create entities
+    let mut runner1 = r.create()?;
+    runner1.execute(|txn| {
+        for i in 1..=5 {
+            let ent = TestEntity::new(format!("item_{}", i), i);
+            txn.create(ent)?;
+        }
+        // Create another type
+        let user = User::new("user".to_string(), "email".to_string());
+        txn.create(user)?;
+
+        txn.commit()?;
+        Ok(())
+    })?;
+
+    // List TestEntity with limit
+    let mut runner2 = r.create()?;
+    runner2.execute(|txn| {
+        // List TestEntity with limit 3
+        let list1 = txn.list_entities("TestEntity", None, 3)?;
+        assert_eq!(list1.len(), 3, "Should return 3 entities");
+
+        // Pagination
+        let last_id = list1.last().unwrap().id();
+        let list2 = txn.list_entities("TestEntity", Some(last_id), 3)?;
+        assert_eq!(list2.len(), 2, "Should return 2 remaining entities");
+
+        let vals2: Vec<i32> = list2
+            .iter()
+            .map(|e| e.as_ent::<TestEntity>().unwrap().value)
+            .collect();
+        assert_eq!(vals2, vec![4, 5]);
+
+        // List User
+        let list_users = txn.list_entities("User", None, 10)?;
+        assert_eq!(list_users.len(), 1);
+
+        Ok(())
+    })
+}
+
 /// Run all AuditEntEdges tests.
 pub fn run_audit_tests<R: AdminTestSuiteRunner>(
     runner: R,
 ) -> anyhow::Result<()> {
     println!("Running AuditEntEdges test cases...");
 
+    test_list_entities(&runner)?;
     test_audit_success(&runner)?;
     test_audit_entity_not_found(&runner)?;
     test_audit_unexpected_entity_type(&runner)?;

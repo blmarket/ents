@@ -6,9 +6,10 @@ import type { AuditResult, EdgeInfo } from '../api/types'
 interface EdgeDebugPanelProps {
   entityId: number
   entityType: string
+  onEdgesFixed?: () => void
 }
 
-export default function EdgeDebugPanel({ entityId, entityType }: EdgeDebugPanelProps) {
+export default function EdgeDebugPanel({ entityId, entityType, onEdgesFixed }: EdgeDebugPanelProps) {
   const { data: knownTypes = [], isLoading: typesLoading } = useQuery({
     queryKey: ['knownTypes'],
     queryFn: getKnownTypes,
@@ -33,6 +34,7 @@ export default function EdgeDebugPanel({ entityId, entityType }: EdgeDebugPanelP
   const fixMutation = useMutation({
     mutationFn: () => fixEntityEdges(entityId, selectedType),
     onSuccess: () => {
+      onEdgesFixed?.()
       auditMutation.mutate()
     },
   })

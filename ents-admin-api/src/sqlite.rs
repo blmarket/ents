@@ -1,166 +1,27 @@
-use std::collections::HashMap;
 use std::sync::Arc;
 
-use ents::{
-    Edge, EdgeDraft, EdgeQuery, EdgeValue, Ent, EntExt, Id,
-    IncomingEdgeProvider, QueryEdge, ReadEnt,
-};
+use ents::{Edge, EdgeQuery, Ent, Id, QueryEdge, ReadEnt};
 use ents_admin::AdminEnt;
 use r2d2::{Pool, PooledConnection};
 use r2d2_sqlite::rusqlite::params;
 use r2d2_sqlite::SqliteConnectionManager;
 
-use crate::backend::{AdminBackend, AuditResult, EdgeInfo};
+use crate::backend::{AdminBackend, AuditResult};
 use crate::error::ApiError;
+use crate::type_registry::TypeRegistry;
+
+/// Type alias for the SQLite transaction type used in the registry.
+///
+/// Note: The `'static` lifetime here is a marker - the actual closures in the
+/// registry work with any lifetime through type coercion, as the transaction
+/// type's behavior is lifetime-independent.
+pub type SqliteTypeRegistry = TypeRegistry<ents_sqlite::Txn<'static>>;
 
 /// SQLite connection pool wrapper for admin API operations.
 #[derive(Clone)]
 pub struct SqlitePool {
     pool: Arc<Pool<SqliteConnectionManager>>,
-    type_registry: TypeRegistry,
-}
-
-/// Registry of entity types for audit/fix operations.
-///
-/// Since Rust's type system requires concrete types at compile time for
-/// `audit_ent_edges` and `fix_ent_edges`, this registry stores closures
-/// that operate on the SQLite transaction type directly.
-///
-/// Use [`TypeRegistryBuilder`] to construct a registry.
-#[derive(Clone, Default)]
-pub struct TypeRegistry {
-    entries: Arc<HashMap<String, (AuditFn, FixFn)>>,
-}
-
-type AuditFn = Arc<
-    dyn Fn(&ents_sqlite::Txn, Id) -> Result<AuditResult, ApiError>
-        + Send
-        + Sync,
->;
-type FixFn =
-    Arc<dyn Fn(ents_sqlite::Txn, Id) -> Result<(), ApiError> + Send + Sync>;
-
-/// Builder for constructing a [`TypeRegistry`].
-#[derive(Default)]
-pub struct TypeRegistryBuilder {
-    entries: HashMap<String, (AuditFn, FixFn)>,
-}
-
-impl TypeRegistryBuilder {
-    pub fn new() -> Self {
-        Self::default()
-    }
-
-    /// Register an entity type for audit/fix operations.
-    ///
-    /// This allows the admin API to perform edge auditing and fixing
-    /// for the registered entity type.
-    pub fn register<E: Ent>(mut self) -> Self {
-        let type_name = std::any::type_name::<E>()
-            .rsplit("::")
-            .next()
-            .unwrap_or("Unknown")
-            .to_string();
-
-        let audit_fn: AuditFn =
-            Arc::new(move |txn: &ents_sqlite::Txn, id: Id| {
-                let ent_box = txn.get(id)?.ok_or(ApiError::NotFound(id))?;
-
-                let ent = ent_box.as_ent::<E>().ok_or_else(|| {
-                    ApiError::BadRequest(format!(
-                        "Entity {} is not of type {}",
-                        id,
-                        std::any::type_name::<E>()
-                    ))
-                })?;
-
-                // Find existing incoming edges
-                let mut existing_edges: Vec<EdgeValue> = txn
-                    .find_edges_by_dest(id)?
-                    .into_iter()
-                    .map(|e| EdgeValue::new(e.source, e.sort_key, e.dest))
-                    .collect();
-                existing_edges.sort_by(|a, b| {
-                    (&a.source, &a.sort_key).cmp(&(&b.source, &b.sort_key))
-                });
-
-                // Draft expected edges
-                let draft =
-                    <E::EdgeProvider as IncomingEdgeProvider<E>>::draft(ent);
-                let mut expected_edges = draft.check(txn).map_err(|e| {
-                    ApiError::Internal(format!("Failed to draft edges: {}", e))
-                })?;
-                expected_edges.sort_by(|a, b| {
-                    (&a.source, &a.sort_key).cmp(&(&b.source, &b.sort_key))
-                });
-
-                let valid = existing_edges == expected_edges;
-
-                // Calculate missing and extra edges
-                let missing: Vec<EdgeInfo> = expected_edges
-                    .iter()
-                    .filter(|e| !existing_edges.contains(e))
-                    .cloned()
-                    .map(EdgeInfo::from)
-                    .collect();
-
-                let extra: Vec<EdgeInfo> = existing_edges
-                    .iter()
-                    .filter(|e| !expected_edges.contains(e))
-                    .cloned()
-                    .map(EdgeInfo::from)
-                    .collect();
-
-                Ok(AuditResult {
-                    valid,
-                    existing_edges: existing_edges
-                        .into_iter()
-                        .map(EdgeInfo::from)
-                        .collect(),
-                    expected_edges: expected_edges
-                        .into_iter()
-                        .map(EdgeInfo::from)
-                        .collect(),
-                    missing,
-                    extra,
-                })
-            });
-
-        let fix_fn: FixFn = Arc::new(move |txn: ents_sqlite::Txn, id: Id| {
-            txn.fix_ent_edges::<E>(id).map_err(|e| match e {
-                ents_admin::AuditError::EntityNotFound(id) => {
-                    ApiError::NotFound(id)
-                }
-                ents_admin::AuditError::UnexpectedEntityType(id, t) => {
-                    ApiError::BadRequest(format!(
-                        "Entity {} is not of type {}",
-                        id, t
-                    ))
-                }
-                e => ApiError::Internal(format!("Failed to fix edges: {}", e)),
-            })
-        });
-
-        self.entries.insert(type_name, (audit_fn, fix_fn));
-        self
-    }
-
-    /// Build the [`TypeRegistry`].
-    pub fn build(self) -> TypeRegistry {
-        TypeRegistry {
-            entries: Arc::new(self.entries),
-        }
-    }
-}
-
-impl TypeRegistry {
-    fn get(&self, type_name: &str) -> Option<&(AuditFn, FixFn)> {
-        self.entries.get(type_name)
-    }
-
-    fn available_types(&self) -> Vec<&str> {
-        self.entries.keys().map(|s| s.as_str()).collect()
-    }
+    type_registry: SqliteTypeRegistry,
 }
 
 impl SqlitePool {
@@ -216,107 +77,9 @@ impl SqlitePool {
     }
 
     /// Set the type registry.
-    pub fn with_registry(mut self, registry: TypeRegistry) -> Self {
+    pub fn with_registry(mut self, registry: SqliteTypeRegistry) -> Self {
         self.type_registry = registry;
         self
-    }
-
-    /// Register an entity type for audit/fix operations.
-    ///
-    /// This is a convenience method that allows registering types one at a time.
-    /// For registering multiple types, consider using [`TypeRegistryBuilder`].
-    pub fn register_type<E: Ent>(&mut self) {
-        let type_name = std::any::type_name::<E>()
-            .rsplit("::")
-            .next()
-            .unwrap_or("Unknown")
-            .to_string();
-
-        let audit_fn: AuditFn =
-            Arc::new(move |txn: &ents_sqlite::Txn, id: Id| {
-                let ent_box = txn.get(id)?.ok_or(ApiError::NotFound(id))?;
-
-                let ent = ent_box.as_ent::<E>().ok_or_else(|| {
-                    ApiError::BadRequest(format!(
-                        "Entity {} is not of type {}",
-                        id,
-                        std::any::type_name::<E>()
-                    ))
-                })?;
-
-                // Find existing incoming edges
-                let mut existing_edges: Vec<EdgeValue> = txn
-                    .find_edges_by_dest(id)?
-                    .into_iter()
-                    .map(|e| EdgeValue::new(e.source, e.sort_key, e.dest))
-                    .collect();
-                existing_edges.sort_by(|a, b| {
-                    (&a.source, &a.sort_key).cmp(&(&b.source, &b.sort_key))
-                });
-
-                // Draft expected edges
-                let draft =
-                    <E::EdgeProvider as IncomingEdgeProvider<E>>::draft(ent);
-                let mut expected_edges = draft.check(txn).map_err(|e| {
-                    ApiError::Internal(format!("Failed to draft edges: {}", e))
-                })?;
-                expected_edges.sort_by(|a, b| {
-                    (&a.source, &a.sort_key).cmp(&(&b.source, &b.sort_key))
-                });
-
-                let valid = existing_edges == expected_edges;
-
-                // Calculate missing and extra edges
-                let missing: Vec<EdgeInfo> = expected_edges
-                    .iter()
-                    .filter(|e| !existing_edges.contains(e))
-                    .cloned()
-                    .map(EdgeInfo::from)
-                    .collect();
-
-                let extra: Vec<EdgeInfo> = existing_edges
-                    .iter()
-                    .filter(|e| !expected_edges.contains(e))
-                    .cloned()
-                    .map(EdgeInfo::from)
-                    .collect();
-
-                Ok(AuditResult {
-                    valid,
-                    existing_edges: existing_edges
-                        .into_iter()
-                        .map(EdgeInfo::from)
-                        .collect(),
-                    expected_edges: expected_edges
-                        .into_iter()
-                        .map(EdgeInfo::from)
-                        .collect(),
-                    missing,
-                    extra,
-                })
-            });
-
-        let fix_fn: FixFn = Arc::new(move |txn: ents_sqlite::Txn, id: Id| {
-            txn.fix_ent_edges::<E>(id).map_err(|e| match e {
-                ents_admin::AuditError::EntityNotFound(id) => {
-                    ApiError::NotFound(id)
-                }
-                ents_admin::AuditError::UnexpectedEntityType(id, t) => {
-                    ApiError::BadRequest(format!(
-                        "Entity {} is not of type {}",
-                        id, t
-                    ))
-                }
-                e => ApiError::Internal(format!("Failed to fix edges: {}", e)),
-            })
-        });
-
-        // Clone the existing entries and add new one
-        let mut entries = (*self.type_registry.entries).clone();
-        entries.insert(type_name, (audit_fn, fix_fn));
-        self.type_registry = TypeRegistry {
-            entries: Arc::new(entries),
-        };
     }
 
     fn get_conn(
@@ -504,7 +267,12 @@ impl AdminBackend for SqlitePool {
             ApiError::Internal(format!("Failed to start transaction: {}", e))
         })?);
 
-        audit_fn(&txn, id)
+        // SAFETY: The audit_fn closure doesn't store any references with the
+        // transaction's lifetime. The closure only uses the transaction for
+        // the duration of this call, after which txn is dropped.
+        let txn_static: &ents_sqlite::Txn<'static> =
+            unsafe { std::mem::transmute(&txn) };
+        audit_fn(txn_static, id)
     }
 
     fn fix_entity_edges(
@@ -526,7 +294,24 @@ impl AdminBackend for SqlitePool {
             ApiError::Internal(format!("Failed to start transaction: {}", e))
         })?);
 
-        fix_fn(txn, id)
+        // SAFETY: The fix_fn closure consumes the transaction and commits it.
+        // The closure doesn't store any references with the transaction's
+        // lifetime beyond this call.
+        let txn_static: ents_sqlite::Txn<'static> =
+            unsafe { std::mem::transmute(txn) };
+        fix_fn(txn_static, id)
+    }
+
+    fn list_entities(
+        &self,
+        entity_type: &str,
+        cursor: Option<Id>,
+        limit: usize,
+    ) -> Result<Vec<Box<dyn Ent>>, ApiError> {
+        self.with_txn(|txn| {
+            txn.list_entities(entity_type, cursor, limit)
+                .map_err(ApiError::from)
+        })
     }
 
     fn known_types(&self) -> Vec<String> {

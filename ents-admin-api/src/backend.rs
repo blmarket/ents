@@ -38,6 +38,13 @@ pub trait AdminBackend: Clone + Send + Sync + 'static {
     fn fix_entity_edges(&self, id: Id, type_name: &str)
         -> Result<(), ApiError>;
 
+    fn list_entities(
+        &self,
+        entity_type: &str,
+        cursor: Option<Id>,
+        limit: usize,
+    ) -> Result<Vec<Box<dyn Ent>>, ApiError>;
+
     // Type discovery
     fn known_types(&self) -> Vec<String>;
 }

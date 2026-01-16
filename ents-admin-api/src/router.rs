@@ -28,7 +28,11 @@ pub fn admin_router<T: AdminBackend>(backend: T) -> Router {
         // Type discovery
         .route("/api/types", get(handlers::get_known_types::<T>))
         // Entity CRUD
-        .route("/api/entities", post(handlers::create_entity::<T>))
+        .route(
+            "/api/entities",
+            get(handlers::list_entities::<T>)
+                .post(handlers::create_entity::<T>),
+        )
         .route(
             "/api/entities/{id}",
             get(handlers::get_entity::<T>)

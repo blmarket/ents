@@ -16,6 +16,12 @@ pub struct EdgeResponse {
     pub dest: Id,
 }
 
+#[derive(Serialize)]
+pub struct EdgesResponse {
+    pub edges: Vec<EdgeResponse>,
+    pub has_more: bool,
+}
+
 #[derive(Deserialize)]
 pub struct EdgesQuery {
     pub name: Option<String>,
@@ -47,7 +53,7 @@ pub async fn get_entity_edges<T: AdminBackend>(
     State(backend): State<T>,
     Path(id): Path<Id>,
     Query(query): Query<EdgesQuery>,
-) -> Result<Json<Vec<EdgeResponse>>, ApiError> {
+) -> Result<Json<EdgesResponse>, ApiError> {
     // First verify entity exists
     let _ = backend.get_entity(id)?.ok_or(ApiError::NotFound(id))?;
 
@@ -59,17 +65,24 @@ pub async fn get_entity_edges<T: AdminBackend>(
         backend.find_edges(id, EdgeQuery::asc(&[]))?
     };
 
-    let response: Vec<EdgeResponse> = edges
-        .into_iter()
+    // The backend returns up to 101 edges; if we got 101, there are more
+    let has_more = edges.len() > 100;
+    let edges_to_return = if has_more { &edges[..100] } else { &edges[..] };
+
+    let response: Vec<EdgeResponse> = edges_to_return
+        .iter()
         .map(|e| EdgeResponse {
             source: e.source,
             sort_key: String::from_utf8_lossy(&e.sort_key).to_string(),
-            sort_key_bytes: e.sort_key,
+            sort_key_bytes: e.sort_key.clone(),
             dest: e.dest,
         })
         .collect();
 
-    Ok(Json(response))
+    Ok(Json(EdgesResponse {
+        edges: response,
+        has_more,
+    }))
 }
 
 pub async fn get_incoming_edges<T: AdminBackend>(
@@ -164,4 +177,22 @@ pub async fn fix_entity_edges<T: AdminBackend>(
 ) -> Result<Json<()>, ApiError> {
     backend.fix_entity_edges(id, &query.type_name)?;
     Ok(Json(()))
+}
+
+#[derive(Deserialize)]
+pub struct ListEntitiesQuery {
+    #[serde(rename = "type")]
+    pub entity_type: String,
+    pub cursor: Option<Id>,
+    pub limit: Option<usize>,
+}
+
+pub async fn list_entities<T: AdminBackend>(
+    State(backend): State<T>,
+    Query(query): Query<ListEntitiesQuery>,
+) -> Result<Json<Vec<Box<dyn Ent>>>, ApiError> {
+    let limit = query.limit.unwrap_or(50).min(100);
+    let entities =
+        backend.list_entities(&query.entity_type, query.cursor, limit)?;
+    Ok(Json(entities))
 }

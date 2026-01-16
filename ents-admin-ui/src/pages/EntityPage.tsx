@@ -139,7 +139,7 @@ export default function EntityPage() {
             onClick={() => setActiveTab('outgoing')}
             className={`px-4 py-2 text-sm ${activeTab === 'outgoing' ? 'text-white bg-gray-700' : 'text-gray-400 hover:text-gray-300'}`}
           >
-            Outgoing Edges ({outgoingEdgesQuery.data?.length || 0})
+            Outgoing Edges ({outgoingEdgesQuery.data?.has_more ? '100+' : (outgoingEdgesQuery.data?.edges.length || 0)})
           </button>
           <button
             onClick={() => setActiveTab('incoming')}
@@ -157,7 +157,7 @@ export default function EntityPage() {
         <div className="p-3">
           {activeTab === 'outgoing' && (
             <EdgeList
-              edges={outgoingEdgesQuery.data || []}
+              edges={outgoingEdgesQuery.data?.edges || []}
               direction="outgoing"
               loading={outgoingEdgesQuery.isLoading}
             />
@@ -170,7 +170,14 @@ export default function EntityPage() {
             />
           )}
           {activeTab === 'audit' && (
-            <EdgeDebugPanel entityId={entityId} entityType={entity.type} />
+            <EdgeDebugPanel
+              entityId={entityId}
+              entityType={entity.type}
+              onEdgesFixed={() => {
+                void queryClient.refetchQueries({ queryKey: ['edges', entityId, 'incoming'] })
+                void queryClient.refetchQueries({ queryKey: ['edges', entityId, 'outgoing'] })
+              }}
+            />
           )}
         </div>
       </div>

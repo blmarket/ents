@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 
 export default function HomePage() {
   const [entityId, setEntityId] = useState('')
@@ -37,6 +37,12 @@ export default function HomePage() {
           >
             View Entity
           </button>
+          <Link
+            to="/entities"
+            className="w-full px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white text-center rounded transition-colors"
+          >
+            Browse All Entities
+          </Link>
         </div>
       </form>
     </div>

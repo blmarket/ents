@@ -2,11 +2,11 @@
 name = "ents-admin-api"
 description = "HTTP API for ents entity administration"
 license = "MIT OR Apache-2.0"
-version.workspace = true
-edition.workspace = true
-authors.workspace = true
-homepage.workspace = true
-repository.workspace = true
+version = "0.4.0"
+edition = "2021"
+authors = ["blmarket@gmail.com"]
+homepage = "https://github.com/blmarket/ents"
+repository = "https://github.com/blmarket/ents"
 
 [features]
 default = ["sqlite"]

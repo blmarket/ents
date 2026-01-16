@@ -177,7 +177,7 @@ impl<'conn> Transactional for Txn<'conn> {
         if draft0 == draft1 {
             return self.update(
                 ent.id(),
-                dyn_clone::clone_box(ent),
+                dyn_clone::clone_box(ent as &dyn Ent),
                 Some(expected_last_updated),
             );
         }
@@ -191,7 +191,7 @@ impl<'conn> Transactional for Txn<'conn> {
 
         let updated = self.update(
             ent.id(),
-            dyn_clone::clone_box(ent),
+            dyn_clone::clone_box(ent as &dyn Ent),
             Some(expected_last_updated),
         )?;
 
@@ -283,6 +283,43 @@ impl<'conn> AdminEnt for Txn<'conn> {
             })?;
         Ok(())
     }
+
+    fn list_entities(
+        &self,
+        entity_type: &str,
+        cursor: Option<Id>,
+        limit: usize,
+    ) -> Result<Vec<Box<dyn Ent>>, DatabaseError> {
+        let sql = "SELECT id, data FROM entities WHERE type = ?1 AND id > ?2 ORDER BY id ASC LIMIT ?3";
+        let cursor_val = cursor.unwrap_or(0);
+
+        let mut stmt =
+            self.0.prepare(sql).map_err(|e| DatabaseError::Other {
+                source: Box::new(e),
+            })?;
+
+        let rows = stmt
+            .query_map(
+                params![entity_type, cursor_val as i64, limit as i64],
+                |row| {
+                    let id: Id = row.get::<_, i64>(0)? as Id;
+                    let data_json: &str = row.get_ref(1)?.as_str()?;
+                    let mut ret =
+                        serde_json::from_str::<Box<dyn Ent>>(data_json)
+                            .expect("failed to parse JSON");
+                    ret.set_id(id);
+                    Ok(ret)
+                },
+            )
+            .map_err(|e| DatabaseError::Other {
+                source: Box::new(e),
+            })?;
+
+        rows.collect::<Result<Vec<_>, _>>()
+            .map_err(|e| DatabaseError::Other {
+                source: Box::new(e),
+            })
+    }
 }
 
 impl<'conn> QueryEdge for Txn<'conn> {
@@ -318,7 +355,7 @@ impl<'conn> QueryEdge for Txn<'conn> {
         };
 
         let sql = format!(
-            "SELECT source, type, dest FROM edges WHERE source = ?{}{} {} LIMIT 100",
+            "SELECT source, type, dest FROM edges WHERE source = ?{}{} {} LIMIT 101",
             name_filter, cursor_filter, order_clause
         );
 
