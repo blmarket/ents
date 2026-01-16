@@ -46,6 +46,7 @@
               pkgs.clippy # for cargo clippy
               pkgs.rustfmt
               pkgs.rustc
+              pkgs.rust-analyzer
               pkgs.deno
             ];
 
