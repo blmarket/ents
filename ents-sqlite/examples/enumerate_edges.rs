@@ -13,7 +13,7 @@ use ents::{
     Id, IncomingEdgeProvider, NullEdgeProvider, QueryEdge, ReadEnt,
     Transactional,
 };
-use ents_admin::AdminEdgeByDest;
+use ents_admin::AdminEnt;
 use ents_sqlite::Txn;
 use r2d2_sqlite::rusqlite::Connection;
 use serde::{Deserialize, Serialize};

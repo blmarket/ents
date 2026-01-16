@@ -3,7 +3,7 @@ mod test_entity;
 pub use test_entity::{Post, Tag, TestEntity, User, UserWithUniqueEmail};
 
 use ents::{EdgeQuery, EdgeValue, EntExt, QueryEdge, ReadEnt, Transactional};
-use ents_admin::{AdminEdgeByDest, AuditError};
+use ents_admin::{AdminEnt, AuditError};
 
 pub trait TestCaseRunner {
     type Tx: Transactional;
@@ -22,7 +22,7 @@ pub trait TestSuiteRunner: Clone {
 /// Trait for test case runners that support AuditEntEdges functionality.
 /// This requires the transaction type to implement AdminEdgeByDest in addition to Transactional.
 pub trait AdminTestCaseRunner {
-    type Tx: AdminEdgeByDest;
+    type Tx: AdminEnt;
 
     fn execute<F, R>(&mut self, f: F) -> anyhow::Result<R>
     where

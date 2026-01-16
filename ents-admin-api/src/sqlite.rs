@@ -5,7 +5,7 @@ use ents::{
     Edge, EdgeDraft, EdgeQuery, EdgeValue, Ent, EntExt, Id,
     IncomingEdgeProvider, QueryEdge, ReadEnt,
 };
-use ents_admin::AdminEdgeByDest;
+use ents_admin::AdminEnt;
 use r2d2::{Pool, PooledConnection};
 use r2d2_sqlite::rusqlite::params;
 use r2d2_sqlite::SqliteConnectionManager;

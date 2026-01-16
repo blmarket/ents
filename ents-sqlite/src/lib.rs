@@ -4,7 +4,7 @@ use ents::{
     DatabaseError, Edge, EdgeDraft, EdgeQuery, EdgeValue, Ent, Id,
     IncomingEdgeProvider, QueryEdge, ReadEnt, SortOrder, Transactional,
 };
-use ents_admin::AdminEdgeByDest;
+use ents_admin::AdminEnt;
 use r2d2_sqlite::rusqlite::{params, OptionalExtension, Transaction};
 
 pub struct Txn<'conn>(Transaction<'conn>);
@@ -233,7 +233,7 @@ impl<'conn> Transactional for Txn<'conn> {
     }
 }
 
-impl<'conn> AdminEdgeByDest for Txn<'conn> {
+impl<'conn> AdminEnt for Txn<'conn> {
     fn find_edges_by_dest(&self, dest: Id) -> Result<Vec<Edge>, DatabaseError> {
         let mut stmt = self
             .0

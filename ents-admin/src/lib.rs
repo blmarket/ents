@@ -27,7 +27,7 @@ pub enum AuditError {
 
 /// Admin trait for querying and manipulating edges by destination.
 /// This provides administrative operations for edge management.
-pub trait AdminEdgeByDest: Transactional {
+pub trait AdminEnt: Transactional {
     fn find_edges_by_dest(&self, dest: Id) -> Result<Vec<Edge>, DatabaseError>;
 
     fn remove_edges_by_dest(&self, dest: Id) -> Result<(), DatabaseError>;
