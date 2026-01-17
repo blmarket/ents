@@ -38,12 +38,12 @@ pub trait Transactional: ReadEnt {
     fn commit(self) -> Result<(), DatabaseError>;
 }
 
-pub trait TransactionalFactory: 'static {
-    type Txn<'b>: Transactional;
+pub trait TransactionProvider: 'static {
+    type Tx<'a>: Transactional;
 
     fn execute<R, F>(&self, func: F) -> Result<R, DatabaseError>
     where
-        F: for<'b> FnOnce(Self::Txn<'b>) -> R;
+        F: for<'a> FnOnce(Self::Tx<'a>) -> R;
 }
 
 /// Error type for database operations

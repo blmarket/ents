@@ -3,7 +3,7 @@ use std::borrow::BorrowMut;
 use ents::{
     DatabaseError, Edge, EdgeDraft, EdgeQuery, EdgeQueryResult, EdgeValue, Ent,
     Id, IncomingEdgeProvider, QueryEdge, ReadEnt, SortOrder, Transactional,
-    TransactionalFactory,
+    TransactionProvider,
 };
 use ents_admin::AdminEnt;
 use r2d2::Pool;
@@ -431,12 +431,12 @@ pub struct SqliteDb {
     pool: Pool<SqliteConnectionManager>,
 }
 
-impl TransactionalFactory for SqliteDb {
-    type Txn<'a> = Txn<'a>;
+impl TransactionProvider for SqliteDb {
+    type Tx<'a> = Txn<'a>;
 
     fn execute<R, F>(&self, func: F) -> Result<R, DatabaseError>
     where
-        F: for<'b> FnOnce(Self::Txn<'b>) -> R,
+        F: for<'b> FnOnce(Self::Tx<'b>) -> R,
     {
         let mut conn = self.pool.get().map_err(|e| DatabaseError::Other {
             source: Box::new(e),
