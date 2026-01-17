@@ -71,14 +71,14 @@ fn test_find_edges_asc_no_filter() {
     let query = EdgeQuery::asc(&[]);
     let result = txn.find_edges(1, query).unwrap();
 
-    assert_eq!(result.len(), 5);
+    assert_eq!(result.edges.len(), 5);
 
     // Verify ascending order by (type, dest)
-    assert_eq!(result[0], Edge::new(1, b"blocks".to_vec(), 30));
-    assert_eq!(result[1], Edge::new(1, b"follows".to_vec(), 10));
-    assert_eq!(result[2], Edge::new(1, b"follows".to_vec(), 20));
-    assert_eq!(result[3], Edge::new(1, b"likes".to_vec(), 5));
-    assert_eq!(result[4], Edge::new(1, b"likes".to_vec(), 15));
+    assert_eq!(result.edges[0], Edge::new(1, b"blocks".to_vec(), 30));
+    assert_eq!(result.edges[1], Edge::new(1, b"follows".to_vec(), 10));
+    assert_eq!(result.edges[2], Edge::new(1, b"follows".to_vec(), 20));
+    assert_eq!(result.edges[3], Edge::new(1, b"likes".to_vec(), 5));
+    assert_eq!(result.edges[4], Edge::new(1, b"likes".to_vec(), 15));
 }
 
 #[test]
@@ -103,14 +103,14 @@ fn test_find_edges_desc_no_filter() {
     let query = EdgeQuery::desc(&[]);
     let result = txn.find_edges(1, query).unwrap();
 
-    assert_eq!(result.len(), 5);
+    assert_eq!(result.edges.len(), 5);
 
     // Verify descending order by (type, dest)
-    assert_eq!(result[0], Edge::new(1, b"likes".to_vec(), 15));
-    assert_eq!(result[1], Edge::new(1, b"likes".to_vec(), 5));
-    assert_eq!(result[2], Edge::new(1, b"follows".to_vec(), 20));
-    assert_eq!(result[3], Edge::new(1, b"follows".to_vec(), 10));
-    assert_eq!(result[4], Edge::new(1, b"blocks".to_vec(), 30));
+    assert_eq!(result.edges[0], Edge::new(1, b"likes".to_vec(), 15));
+    assert_eq!(result.edges[1], Edge::new(1, b"likes".to_vec(), 5));
+    assert_eq!(result.edges[2], Edge::new(1, b"follows".to_vec(), 20));
+    assert_eq!(result.edges[3], Edge::new(1, b"follows".to_vec(), 10));
+    assert_eq!(result.edges[4], Edge::new(1, b"blocks".to_vec(), 30));
 }
 
 #[test]
@@ -134,9 +134,9 @@ fn test_find_edges_with_single_name_filter() {
     let query = EdgeQuery::asc(&[b"follows"]);
     let result = txn.find_edges(1, query).unwrap();
 
-    assert_eq!(result.len(), 2);
-    assert_eq!(result[0], Edge::new(1, b"follows".to_vec(), 10));
-    assert_eq!(result[1], Edge::new(1, b"follows".to_vec(), 20));
+    assert_eq!(result.edges.len(), 2);
+    assert_eq!(result.edges[0], Edge::new(1, b"follows".to_vec(), 10));
+    assert_eq!(result.edges[1], Edge::new(1, b"follows".to_vec(), 20));
 }
 
 #[test]
@@ -161,11 +161,11 @@ fn test_find_edges_with_multiple_name_filters() {
     let query = EdgeQuery::asc(&[b"follows" as &[u8], b"likes" as &[u8]]);
     let result = txn.find_edges(1, query).unwrap();
 
-    assert_eq!(result.len(), 4);
-    assert_eq!(result[0], Edge::new(1, b"follows".to_vec(), 10));
-    assert_eq!(result[1], Edge::new(1, b"follows".to_vec(), 20));
-    assert_eq!(result[2], Edge::new(1, b"likes".to_vec(), 5));
-    assert_eq!(result[3], Edge::new(1, b"likes".to_vec(), 15));
+    assert_eq!(result.edges.len(), 4);
+    assert_eq!(result.edges[0], Edge::new(1, b"follows".to_vec(), 10));
+    assert_eq!(result.edges[1], Edge::new(1, b"follows".to_vec(), 20));
+    assert_eq!(result.edges[2], Edge::new(1, b"likes".to_vec(), 5));
+    assert_eq!(result.edges[3], Edge::new(1, b"likes".to_vec(), 15));
 }
 
 #[test]
@@ -192,11 +192,11 @@ fn test_find_edges_asc_with_cursor() {
     let result = txn.find_edges(1, query).unwrap();
 
     // Should return edges after ("follows", 10)
-    assert_eq!(result.len(), 4);
-    assert_eq!(result[0], Edge::new(1, b"follows".to_vec(), 20));
-    assert_eq!(result[1], Edge::new(1, b"follows".to_vec(), 30));
-    assert_eq!(result[2], Edge::new(1, b"likes".to_vec(), 5));
-    assert_eq!(result[3], Edge::new(1, b"likes".to_vec(), 15));
+    assert_eq!(result.edges.len(), 4);
+    assert_eq!(result.edges[0], Edge::new(1, b"follows".to_vec(), 20));
+    assert_eq!(result.edges[1], Edge::new(1, b"follows".to_vec(), 30));
+    assert_eq!(result.edges[2], Edge::new(1, b"likes".to_vec(), 5));
+    assert_eq!(result.edges[3], Edge::new(1, b"likes".to_vec(), 15));
 }
 
 #[test]
@@ -223,10 +223,10 @@ fn test_find_edges_desc_with_cursor() {
     let result = txn.find_edges(1, query).unwrap();
 
     // Should return edges before ("likes", 5) in descending order
-    assert_eq!(result.len(), 3);
-    assert_eq!(result[0], Edge::new(1, b"follows".to_vec(), 30));
-    assert_eq!(result[1], Edge::new(1, b"follows".to_vec(), 20));
-    assert_eq!(result[2], Edge::new(1, b"follows".to_vec(), 10));
+    assert_eq!(result.edges.len(), 3);
+    assert_eq!(result.edges[0], Edge::new(1, b"follows".to_vec(), 30));
+    assert_eq!(result.edges[1], Edge::new(1, b"follows".to_vec(), 20));
+    assert_eq!(result.edges[2], Edge::new(1, b"follows".to_vec(), 10));
 }
 
 #[test]
@@ -252,9 +252,9 @@ fn test_find_edges_asc_cursor_with_filter() {
     let query = EdgeQuery::asc(&[b"follows"]).with_cursor(cursor);
     let result = txn.find_edges(1, query).unwrap();
 
-    assert_eq!(result.len(), 2);
-    assert_eq!(result[0], Edge::new(1, b"follows".to_vec(), 20));
-    assert_eq!(result[1], Edge::new(1, b"follows".to_vec(), 30));
+    assert_eq!(result.edges.len(), 2);
+    assert_eq!(result.edges[0], Edge::new(1, b"follows".to_vec(), 20));
+    assert_eq!(result.edges[1], Edge::new(1, b"follows".to_vec(), 30));
 }
 
 #[test]
@@ -269,7 +269,7 @@ fn test_find_edges_empty_result() {
     let query = EdgeQuery::asc(&[b"blocks"]);
     let result = txn.find_edges(1, query).unwrap();
 
-    assert_eq!(result.len(), 0);
+    assert_eq!(result.edges.len(), 0);
 }
 
 #[test]
@@ -284,7 +284,7 @@ fn test_find_edges_no_edges_for_source() {
     let query = EdgeQuery::asc(&[]);
     let result = txn.find_edges(999, query).unwrap();
 
-    assert_eq!(result.len(), 0);
+    assert_eq!(result.edges.len(), 0);
 }
 
 #[test]
@@ -303,16 +303,16 @@ fn test_find_edges_pagination_asc() {
     // First page (no cursor)
     let query = EdgeQuery::asc(&[b"item"]);
     let page1 = txn.find_edges(1, query).unwrap();
-    assert_eq!(page1.len(), 10);
+    assert_eq!(page1.edges.len(), 10);
 
     // Second page using last item from page1 as cursor
-    let last_edge = page1.last().unwrap();
+    let last_edge = page1.edges.last().unwrap();
     let cursor = EdgeCursor::new(&last_edge.sort_key, last_edge.dest);
     let query = EdgeQuery::asc(&[b"item"]).with_cursor(cursor);
     let page2 = txn.find_edges(1, query).unwrap();
 
     // Should be empty since we already got all items
-    assert_eq!(page2.len(), 0);
+    assert_eq!(page2.edges.len(), 0);
 }
 
 #[test]
@@ -331,17 +331,17 @@ fn test_find_edges_pagination_desc() {
     // First page descending (no cursor)
     let query = EdgeQuery::desc(&[b"item"]);
     let page1 = txn.find_edges(1, query).unwrap();
-    assert_eq!(page1.len(), 10);
-    assert_eq!(page1[0].dest, 100); // Highest first
+    assert_eq!(page1.edges.len(), 10);
+    assert_eq!(page1.edges[0].dest, 100); // Highest first
 
     // Second page using last item from page1 as cursor
-    let last_edge = page1.last().unwrap();
+    let last_edge = page1.edges.last().unwrap();
     let cursor = EdgeCursor::new(&last_edge.sort_key, last_edge.dest);
     let query = EdgeQuery::desc(&[b"item"]).with_cursor(cursor);
     let page2 = txn.find_edges(1, query).unwrap();
 
     // Should be empty
-    assert_eq!(page2.len(), 0);
+    assert_eq!(page2.edges.len(), 0);
 }
 
 #[test]
@@ -361,9 +361,9 @@ fn test_find_edges_limit_100() {
     let query = EdgeQuery::asc(&[b"item"]);
     let result = txn.find_edges(1, query).unwrap();
 
-    assert_eq!(result.len(), 100);
-    assert_eq!(result[0].dest, 1);
-    assert_eq!(result[99].dest, 100);
+    assert_eq!(result.edges.len(), 100);
+    assert_eq!(result.edges[0].dest, 1);
+    assert_eq!(result.edges[99].dest, 100);
 }
 
 #[test]
@@ -384,9 +384,9 @@ fn test_find_edges_cursor_boundary() {
     let result = txn.find_edges(1, query).unwrap();
 
     // Should get edges from type "b" only
-    assert_eq!(result.len(), 2);
-    assert_eq!(result[0], Edge::new(1, b"b".to_vec(), 1));
-    assert_eq!(result[1], Edge::new(1, b"b".to_vec(), 2));
+    assert_eq!(result.edges.len(), 2);
+    assert_eq!(result.edges[0], Edge::new(1, b"b".to_vec(), 1));
+    assert_eq!(result.edges[1], Edge::new(1, b"b".to_vec(), 2));
 }
 
 #[test]
@@ -409,16 +409,16 @@ fn test_find_edges_multiple_sources() {
     // Query for source 1
     let query = EdgeQuery::asc(&[b"follows"]);
     let result1 = txn.find_edges(1, query).unwrap();
-    assert_eq!(result1.len(), 2);
-    assert_eq!(result1[0].dest, 10);
-    assert_eq!(result1[1].dest, 20);
+    assert_eq!(result1.edges.len(), 2);
+    assert_eq!(result1.edges[0].dest, 10);
+    assert_eq!(result1.edges[1].dest, 20);
 
     // Query for source 2
     let query = EdgeQuery::asc(&[b"follows"]);
     let result2 = txn.find_edges(2, query).unwrap();
-    assert_eq!(result2.len(), 2);
-    assert_eq!(result2[0].dest, 30);
-    assert_eq!(result2[1].dest, 40);
+    assert_eq!(result2.edges.len(), 2);
+    assert_eq!(result2.edges[0].dest, 30);
+    assert_eq!(result2.edges[1].dest, 40);
 }
 
 #[test]
@@ -442,7 +442,7 @@ fn test_find_edges_binary_edge_types() {
     let query = EdgeQuery::asc(&[&[0x00, 0x01, 0x02]]);
     let result = txn.find_edges(1, query).unwrap();
 
-    assert_eq!(result.len(), 1);
-    assert_eq!(result[0].sort_key, vec![0x00, 0x01, 0x02]);
-    assert_eq!(result[0].dest, 10);
+    assert_eq!(result.edges.len(), 1);
+    assert_eq!(result.edges[0].sort_key, vec![0x00, 0x01, 0x02]);
+    assert_eq!(result.edges[0].dest, 10);
 }

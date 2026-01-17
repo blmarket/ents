@@ -18,8 +18,8 @@ use std::sync::Mutex;
 
 use byteorder::{BigEndian, ByteOrder};
 use ents::{
-    DatabaseError, Edge, EdgeDraft, EdgeQuery, EdgeValue, Ent, Id,
-    IncomingEdgeProvider, QueryEdge, ReadEnt, SortOrder, Transactional,
+    DatabaseError, Edge, EdgeDraft, EdgeQuery, EdgeQueryResult, EdgeValue, Ent,
+    Id, IncomingEdgeProvider, QueryEdge, ReadEnt, SortOrder, Transactional,
 };
 use heed::types::{Bytes, Str};
 use heed::{Database, Env, EnvOpenOptions, RwTxn};
@@ -354,9 +354,98 @@ impl<'env> QueryEdge for Txn<'env> {
         &self,
         source: Id,
         query: EdgeQuery,
-    ) -> Result<Vec<Edge>, DatabaseError> {
+    ) -> Result<EdgeQueryResult, DatabaseError> {
         let txn = self.txn.borrow();
-        find_edges_internal(&txn, &self.env.edges, source, query)
+        {
+            let txn: &heed::RoTxn<'_> = &txn;
+            let edges_db: &Database<Bytes, Bytes> = &self.env.edges;
+            let mut results = Vec::new();
+
+            // Create the prefix for this source
+            let mut prefix = [0u8; 8];
+            BigEndian::write_u64(&mut prefix, source);
+
+            // Get iterator
+            let iter = edges_db.prefix_iter(txn, &prefix).map_err(|e| {
+                DatabaseError::Other {
+                    source: Box::new(e),
+                }
+            })?;
+
+            // Collect all matching edges
+            let mut all_edges: Vec<Edge> = Vec::new();
+
+            for result in iter {
+                let (key, _) = result.map_err(|e| DatabaseError::Other {
+                    source: Box::new(e),
+                })?;
+
+                let (src, sort_key, dest) = parse_edge_key(key);
+                if src != source {
+                    break; // Past our prefix
+                }
+
+                // Apply edge name filter if specified
+                if !query.edge_names.is_empty()
+                    && !query.edge_names.contains(&sort_key)
+                {
+                    continue;
+                }
+
+                all_edges.push(Edge::new(src, sort_key.to_vec(), dest));
+            }
+
+            // Sort based on order
+            match query.order {
+                SortOrder::Asc => {
+                    all_edges.sort_by(|a, b| {
+                        (&a.sort_key, a.dest).cmp(&(&b.sort_key, b.dest))
+                    });
+                }
+                SortOrder::Desc => {
+                    all_edges.sort_by(|a, b| {
+                        (&b.sort_key, b.dest).cmp(&(&a.sort_key, a.dest))
+                    });
+                }
+            }
+
+            // Apply cursor filter, collecting one extra to detect has_more
+            for edge in all_edges {
+                if let Some(ref cursor) = query.cursor {
+                    let edge_key = (edge.sort_key.as_slice(), edge.dest);
+                    let cursor_key = (cursor.sort_key, cursor.destination);
+
+                    match query.order {
+                        SortOrder::Asc => {
+                            if edge_key <= cursor_key {
+                                continue;
+                            }
+                        }
+                        SortOrder::Desc => {
+                            if edge_key >= cursor_key {
+                                continue;
+                            }
+                        }
+                    }
+                }
+
+                results.push(edge);
+
+                if results.len() > MAX_EDGES {
+                    break;
+                }
+            }
+
+            let has_more = results.len() > MAX_EDGES;
+            if has_more {
+                results.truncate(MAX_EDGES);
+            }
+
+            Ok(EdgeQueryResult {
+                edges: results,
+                has_more,
+            })
+        }
     }
 }
 
@@ -382,91 +471,6 @@ fn parse_edge_key(key: &[u8]) -> (Id, &[u8], Id) {
     let dest = BigEndian::read_u64(&key[key.len() - 8..]);
     let sort_key = &key[8..key.len() - 8];
     (source, sort_key, dest)
-}
-
-fn find_edges_internal(
-    txn: &heed::RoTxn<'_>,
-    edges_db: &Database<Bytes, Bytes>,
-    source: Id,
-    query: EdgeQuery,
-) -> Result<Vec<Edge>, DatabaseError> {
-    let mut results = Vec::new();
-
-    // Create the prefix for this source
-    let mut prefix = [0u8; 8];
-    BigEndian::write_u64(&mut prefix, source);
-
-    // Get iterator
-    let iter = edges_db.prefix_iter(txn, &prefix).map_err(|e| {
-        DatabaseError::Other {
-            source: Box::new(e),
-        }
-    })?;
-
-    // Collect all matching edges
-    let mut all_edges: Vec<Edge> = Vec::new();
-
-    for result in iter {
-        let (key, _) = result.map_err(|e| DatabaseError::Other {
-            source: Box::new(e),
-        })?;
-
-        let (src, sort_key, dest) = parse_edge_key(key);
-        if src != source {
-            break; // Past our prefix
-        }
-
-        // Apply edge name filter if specified
-        if !query.edge_names.is_empty() && !query.edge_names.contains(&sort_key)
-        {
-            continue;
-        }
-
-        all_edges.push(Edge::new(src, sort_key.to_vec(), dest));
-    }
-
-    // Sort based on order
-    match query.order {
-        SortOrder::Asc => {
-            all_edges.sort_by(|a, b| {
-                (&a.sort_key, a.dest).cmp(&(&b.sort_key, b.dest))
-            });
-        }
-        SortOrder::Desc => {
-            all_edges.sort_by(|a, b| {
-                (&b.sort_key, b.dest).cmp(&(&a.sort_key, a.dest))
-            });
-        }
-    }
-
-    // Apply cursor filter
-    for edge in all_edges {
-        if let Some(ref cursor) = query.cursor {
-            let edge_key = (edge.sort_key.as_slice(), edge.dest);
-            let cursor_key = (cursor.sort_key, cursor.destination);
-
-            match query.order {
-                SortOrder::Asc => {
-                    if edge_key <= cursor_key {
-                        continue;
-                    }
-                }
-                SortOrder::Desc => {
-                    if edge_key >= cursor_key {
-                        continue;
-                    }
-                }
-            }
-        }
-
-        results.push(edge);
-
-        if results.len() >= MAX_EDGES {
-            break;
-        }
-    }
-
-    Ok(results)
 }
 
 #[cfg(test)]

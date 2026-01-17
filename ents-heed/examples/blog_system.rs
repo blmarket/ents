@@ -209,10 +209,10 @@ fn main() -> anyhow::Result<()> {
 
         // Find all edges from posts to alice
         for post_id in [post1_id, post2_id, post3_id] {
-            let edges =
+            let result =
                 txn.find_edges(post_id, EdgeQuery::asc(&[b"authored_by"]))?;
 
-            if !edges.is_empty() && edges[0].dest == alice_id {
+            if !result.edges.is_empty() && result.edges[0].dest == alice_id {
                 if let Some(post_ent) = txn.get(post_id)? {
                     if post_ent.is::<BlogPost>() {
                         let post_json = serde_json::to_value(&post_ent)?;
@@ -240,9 +240,9 @@ fn main() -> anyhow::Result<()> {
 
             // Verify edge changed
             let txn = env.write_txn()?;
-            let edges =
+            let result =
                 txn.find_edges(post2_id, EdgeQuery::asc(&[b"authored_by"]))?;
-            if !edges.is_empty() && edges[0].dest == bob_id {
+            if !result.edges.is_empty() && result.edges[0].dest == bob_id {
                 println!("✓ Edge updated correctly");
             }
         }
@@ -257,12 +257,12 @@ fn main() -> anyhow::Result<()> {
         let mut bob_count = 0;
 
         for post_id in [post1_id, post2_id, post3_id] {
-            let edges =
+            let result =
                 txn.find_edges(post_id, EdgeQuery::asc(&[b"authored_by"]))?;
-            if !edges.is_empty() {
-                if edges[0].dest == alice_id {
+            if !result.edges.is_empty() {
+                if result.edges[0].dest == alice_id {
                     alice_count += 1;
-                } else if edges[0].dest == bob_id {
+                } else if result.edges[0].dest == bob_id {
                     bob_count += 1;
                 }
             }

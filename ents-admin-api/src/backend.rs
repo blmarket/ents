@@ -1,4 +1,4 @@
-use ents::{Edge, EdgeQuery, EdgeValue, Ent, Id};
+use ents::{Edge, EdgeQuery, EdgeQueryResult, EdgeValue, Ent, Id};
 
 use crate::error::ApiError;
 
@@ -17,7 +17,7 @@ pub trait AdminBackend: Clone + Send + Sync + 'static {
         &self,
         source: Id,
         query: EdgeQuery,
-    ) -> Result<Vec<Edge>, ApiError>;
+    ) -> Result<EdgeQueryResult, ApiError>;
     fn find_edges_by_dest(&self, dest: Id) -> Result<Vec<Edge>, ApiError>;
 
     // Write operations (should handle transaction lifecycle internally)

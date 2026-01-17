@@ -105,29 +105,29 @@ pub fn test_relationships<R: TestSuiteRunner>(r: &R) -> anyhow::Result<()> {
         let mut runner2 = r.create()?;
         runner2.execute(|txn| {
             // Find author's posts (User --[authored]--> Post)
-            let author_edges =
+            let author_result =
                 txn.find_edges(user_id, EdgeQuery::asc(&[b"authored"]))?;
             assert_eq!(
-                author_edges.len(),
+                author_result.edges.len(),
                 1,
                 "User should have authored exactly one post"
             );
             assert_eq!(
-                author_edges[0].dest, post_id,
+                author_result.edges[0].dest, post_id,
                 "Author edge should point to the correct post"
             );
 
             // Find each tag's posts (Tag --[tagged]--> Post)
             for &tid in &[tag1_id, tag2_id, tag3_id] {
-                let tag_edges =
+                let tag_result =
                     txn.find_edges(tid, EdgeQuery::asc(&[b"tagged"]))?;
                 assert_eq!(
-                    tag_edges.len(),
+                    tag_result.edges.len(),
                     1,
                     "Each tag should tag exactly one post"
                 );
                 assert_eq!(
-                    tag_edges[0].dest, post_id,
+                    tag_result.edges[0].dest, post_id,
                     "Tag edge should point to the correct post"
                 );
             }
@@ -647,15 +647,15 @@ pub fn test_audit_success<R: AdminTestSuiteRunner>(
     let mut runner3 = r.create()?;
     runner3.execute(|txn| {
         // Check author edge: User --[authored]--> Post
-        let author_edges =
+        let author_result =
             txn.find_edges(user_id, EdgeQuery::asc(&[b"authored"]))?;
-        assert_eq!(author_edges.len(), 1, "Author edge should still exist");
-        assert_eq!(author_edges[0].dest, post_id);
+        assert_eq!(author_result.edges.len(), 1, "Author edge should still exist");
+        assert_eq!(author_result.edges[0].dest, post_id);
 
         // Check tag edge: Tag --[tagged]--> Post
-        let tag_edges = txn.find_edges(tag_id, EdgeQuery::asc(&[b"tagged"]))?;
-        assert_eq!(tag_edges.len(), 1, "Tag edge should still exist");
-        assert_eq!(tag_edges[0].dest, post_id);
+        let tag_result = txn.find_edges(tag_id, EdgeQuery::asc(&[b"tagged"]))?;
+        assert_eq!(tag_result.edges.len(), 1, "Tag edge should still exist");
+        assert_eq!(tag_result.edges[0].dest, post_id);
 
         txn.commit()?;
         Ok(())
@@ -1163,18 +1163,18 @@ pub fn test_fix_ent_edges<R: AdminTestSuiteRunner>(
     let mut runner7 = r.create()?;
     runner7.execute(|txn| {
         // Check author edge: User --[authored]--> Post
-        let author_edges =
+        let author_result =
             txn.find_edges(user_id, EdgeQuery::asc(&[b"authored"]))?;
-        assert_eq!(author_edges.len(), 1, "Should have author edge");
+        assert_eq!(author_result.edges.len(), 1, "Should have author edge");
         assert_eq!(
-            author_edges[0].dest, post_id,
+            author_result.edges[0].dest, post_id,
             "Author edge should point to post"
         );
 
         // Check tag edge: Tag --[tagged]--> Post
-        let tag_edges = txn.find_edges(tag_id, EdgeQuery::asc(&[b"tagged"]))?;
-        assert_eq!(tag_edges.len(), 1, "Should have tag edge");
-        assert_eq!(tag_edges[0].dest, post_id, "Tag edge should point to post");
+        let tag_result = txn.find_edges(tag_id, EdgeQuery::asc(&[b"tagged"]))?;
+        assert_eq!(tag_result.edges.len(), 1, "Should have tag edge");
+        assert_eq!(tag_result.edges[0].dest, post_id, "Tag edge should point to post");
 
         txn.commit()?;
         Ok(())

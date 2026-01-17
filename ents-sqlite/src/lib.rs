@@ -1,8 +1,8 @@
 use std::borrow::BorrowMut;
 
 use ents::{
-    DatabaseError, Edge, EdgeDraft, EdgeQuery, EdgeValue, Ent, Id,
-    IncomingEdgeProvider, QueryEdge, ReadEnt, SortOrder, Transactional,
+    DatabaseError, Edge, EdgeDraft, EdgeQuery, EdgeQueryResult, EdgeValue, Ent,
+    Id, IncomingEdgeProvider, QueryEdge, ReadEnt, SortOrder, Transactional,
 };
 use ents_admin::AdminEnt;
 use r2d2_sqlite::rusqlite::{params, OptionalExtension, Transaction};
@@ -327,7 +327,7 @@ impl<'conn> QueryEdge for Txn<'conn> {
         &self,
         source: Id,
         query: EdgeQuery,
-    ) -> Result<Vec<Edge>, DatabaseError> {
+    ) -> Result<EdgeQueryResult, DatabaseError> {
         // Build WHERE clause for edge names filter
         let name_filter = if query.edge_names.is_empty() {
             String::new()
@@ -354,8 +354,9 @@ impl<'conn> QueryEdge for Txn<'conn> {
             SortOrder::Desc => "ORDER BY type DESC, dest DESC",
         };
 
+        // Request one extra row to detect if there are more results
         let sql = format!(
-            "SELECT source, type, dest FROM edges WHERE source = ?{}{} {} LIMIT 100",
+            "SELECT source, type, dest FROM edges WHERE source = ?{}{} {} LIMIT 101",
             name_filter, cursor_filter, order_clause
         );
 
@@ -407,9 +408,17 @@ impl<'conn> QueryEdge for Txn<'conn> {
                 source: Box::new(e),
             })?;
 
-        rows.collect::<Result<Vec<_>, _>>()
+        let mut edges: Vec<Edge> = rows
+            .collect::<Result<Vec<_>, _>>()
             .map_err(|e| DatabaseError::Other {
                 source: Box::new(e),
-            })
+            })?;
+
+        let has_more = edges.len() > 100;
+        if has_more {
+            edges.truncate(100);
+        }
+
+        Ok(EdgeQueryResult { edges, has_more })
     }
 }

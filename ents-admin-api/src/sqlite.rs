@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use ents::{Edge, EdgeQuery, Ent, Id, QueryEdge, ReadEnt};
+use ents::{Edge, EdgeQuery, EdgeQueryResult, Ent, Id, QueryEdge, ReadEnt};
 use ents_admin::AdminEnt;
 use r2d2::{Pool, PooledConnection};
 use r2d2_sqlite::rusqlite::params;
@@ -111,7 +111,7 @@ impl AdminBackend for SqlitePool {
         &self,
         source: Id,
         query: EdgeQuery,
-    ) -> Result<Vec<Edge>, ApiError> {
+    ) -> Result<EdgeQueryResult, ApiError> {
         self.with_txn(|txn| {
             txn.find_edges(source, query).map_err(ApiError::from)
         })

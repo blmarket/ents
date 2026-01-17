@@ -57,7 +57,7 @@ pub async fn get_entity_edges<T: AdminBackend>(
     // First verify entity exists
     let _ = backend.get_entity(id)?.ok_or(ApiError::NotFound(id))?;
 
-    let edges = if let Some(name) = &query.name {
+    let result = if let Some(name) = &query.name {
         let name_bytes = name.as_bytes();
         let names: &[&[u8]] = &[name_bytes];
         backend.find_edges(id, EdgeQuery::asc(names))?
@@ -65,11 +65,8 @@ pub async fn get_entity_edges<T: AdminBackend>(
         backend.find_edges(id, EdgeQuery::asc(&[]))?
     };
 
-    // The backend returns up to 101 edges; if we got 101, there are more
-    let has_more = edges.len() > 100;
-    let edges_to_return = if has_more { &edges[..100] } else { &edges[..] };
-
-    let response: Vec<EdgeResponse> = edges_to_return
+    let response: Vec<EdgeResponse> = result
+        .edges
         .iter()
         .map(|e| EdgeResponse {
             source: e.source,
@@ -81,7 +78,7 @@ pub async fn get_entity_edges<T: AdminBackend>(
 
     Ok(Json(EdgesResponse {
         edges: response,
-        has_more,
+        has_more: result.has_more,
     }))
 }
 

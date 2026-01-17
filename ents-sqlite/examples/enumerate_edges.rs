@@ -90,13 +90,13 @@ impl EdgeDraft for UniqueUsernameDraft {
     fn check<T: ReadEnt>(self, txn: &T) -> Result<Vec<EdgeValue>, DraftError> {
         // Check if any existing edge has this username as the sort key
         let username_bytes = self.username.as_bytes();
-        let existing_edges = txn.find_edges(
+        let existing_result = txn.find_edges(
             self.username_index_id,
             EdgeQuery::asc(&[username_bytes]),
         )?;
 
         // If we find an edge with exactly this username, the username is already taken.
-        for edge in &existing_edges {
+        for edge in &existing_result.edges {
             if edge.sort_key == username_bytes {
                 return Err(DraftError::ValidationFailed(format!(
                     "Username '{}' is already taken by user {}",
@@ -654,9 +654,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Query edges from the UserNameIndex to see all usernames
     println!("Edges from UserNameIndex (id={}):", username_index_id);
-    let username_edges =
+    let username_result =
         txn.find_edges(username_index_id, EdgeQuery::asc(&[]))?;
-    for edge in &username_edges {
+    for edge in &username_result.edges {
         let username = String::from_utf8_lossy(&edge.sort_key);
         println!("  {} --[{}]--> User {}", edge.source, username, edge.dest);
     }
@@ -684,10 +684,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // so querying by source=Post shows outgoing edges like has_comment.
     println!("Outgoing edges from Post (source={}):", post_id);
     let post_outgoing = txn.find_edges(post_id, EdgeQuery::asc(&[]))?;
-    if post_outgoing.is_empty() {
+    if post_outgoing.edges.is_empty() {
         println!("  (none - Post has incoming edges, not outgoing)");
     }
-    for edge in &post_outgoing {
+    for edge in &post_outgoing.edges {
         let edge_type = String::from_utf8_lossy(&edge.sort_key);
         println!("  {} --[{}]--> {}", edge.source, edge_type, edge.dest);
     }
@@ -771,9 +771,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     {
         let verify_tx = conn.unchecked_transaction()?;
         let verify_txn = Txn::new(verify_tx);
-        let user_edges =
+        let user_result =
             verify_txn.find_edges(username_index_id, EdgeQuery::asc(&[]))?;
-        println!("  UserNameIndex edges: {} (unchanged)", user_edges.len());
+        println!("  UserNameIndex edges: {} (unchanged)", user_result.edges.len());
     }
 
     println!("\n=== Audit Complete ===");

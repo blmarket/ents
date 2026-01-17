@@ -7,7 +7,7 @@ pub use edge_provider::{
     DraftError, EdgeDraft, EdgeValue, IncomingEdgeProvider, NullEdgeDraft,
     NullEdgeProvider, ReadEnt, Transactional,
 };
-pub use query_edge::{Edge, EdgeCursor, EdgeQuery, QueryEdge, SortOrder};
+pub use query_edge::{Edge, EdgeCursor, EdgeQuery, EdgeQueryResult, QueryEdge, SortOrder};
 
 /// Unique identifier for an entity
 pub type Id = u64;

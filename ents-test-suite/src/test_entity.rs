@@ -140,6 +140,7 @@ impl EdgeDraft for UniqueEmailDraft {
         // Check if any existing user has this email
         let existing_edges = txn
             .find_edges(0, EdgeQuery::asc(&[b"unique_email"]))?
+            .edges
             .into_iter()
             .filter(|_edge| {
                 // In a real implementation, we'd need to check the email value

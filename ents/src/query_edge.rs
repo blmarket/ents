@@ -50,6 +50,15 @@ impl Edge {
     }
 }
 
+/// Result of an edge query, containing edges and pagination info
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct EdgeQueryResult {
+    /// The edges returned by the query
+    pub edges: Vec<Edge>,
+    /// Whether there are more edges beyond those returned
+    pub has_more: bool,
+}
+
 /// Query parameters for edge enumeration
 #[derive(Debug, Clone)]
 pub struct EdgeQuery<'a> {
@@ -95,18 +104,10 @@ impl<'a> EdgeQuery<'a> {
 }
 
 pub trait QueryEdge {
-    /// Find edges with flexible filtering and ordering options.
-    ///
-    /// # Arguments
-    /// * `source` - The source entity ID
-    /// * `query` - Query parameters specifying filters, ordering, and pagination
-    ///
-    /// Returns up to 100 edges matching the query criteria, sorted by (sort_key, destination).
-    /// For ascending order, edges are returned where (sort_key, destination) > cursor.
-    /// For descending order, edges are returned where (sort_key, destination) < cursor.
+    /// Find edges
     fn find_edges(
         &self,
         source: Id,
         query: EdgeQuery,
-    ) -> Result<Vec<Edge>, DatabaseError>;
+    ) -> Result<EdgeQueryResult, DatabaseError>;
 }
