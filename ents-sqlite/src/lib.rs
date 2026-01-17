@@ -237,6 +237,38 @@ impl<'conn> Transactional for Txn<'conn> {
 }
 
 impl<'conn> AdminEnt for Txn<'conn> {
+    fn create_dyn(&self, ent: Box<dyn Ent>) -> Result<Id, DatabaseError> {
+        // Serialize the entity to JSON
+        let entity_type = ent.typetag_name().to_string();
+        let data_json =
+            serde_json::to_string(&ent).map_err(|e| DatabaseError::Other {
+                source: Box::new(e),
+            })?;
+
+        self.0
+            .execute(
+                "INSERT INTO entities (type, data) VALUES (?1, ?2)",
+                params![entity_type, data_json],
+            )
+            .map_err(|e| DatabaseError::Other {
+                source: Box::new(e),
+            })?;
+
+        let id = self.0.last_insert_rowid() as Id;
+        Ok(id)
+    }
+
+    fn update_dyn(&self, ent: Box<dyn Ent>) -> Result<(), DatabaseError> {
+        let id = ent.id();
+        let updated = self.update(id, ent, None)?;
+        if !updated {
+            return Err(DatabaseError::Other {
+                source: "Entity not found or update failed".into(),
+            });
+        }
+        Ok(())
+    }
+
     fn find_edges_by_dest(&self, dest: Id) -> Result<Vec<Edge>, DatabaseError> {
         let mut stmt = self
             .0

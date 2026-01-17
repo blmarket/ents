@@ -30,6 +30,18 @@ pub trait AdminEnt: Transactional {
 
     fn remove_edges_by_dest(&self, dest: Id) -> Result<(), DatabaseError>;
 
+    /// Create an entity from a boxed dynamic Ent.
+    ///
+    /// This is used by the admin API to create entities without knowing their
+    /// concrete type at compile time.
+    fn create_dyn(&self, ent: Box<dyn Ent>) -> Result<Id, DatabaseError>;
+
+    /// Update an entity from a boxed dynamic Ent.
+    ///
+    /// The entity's ID should already be set. This method replaces the
+    /// existing entity data with the provided entity.
+    fn update_dyn(&self, ent: Box<dyn Ent>) -> Result<(), DatabaseError>;
+
     fn audit_ent_edges<E: Ent>(&self, id: Id) -> Result<(), AuditError>
     where
         Self: Sized,

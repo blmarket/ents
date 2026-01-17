@@ -9,8 +9,7 @@ homepage = "https://github.com/blmarket/ents"
 repository = "https://github.com/blmarket/ents"
 
 [features]
-default = ["sqlite"]
-sqlite = ["dep:ents-sqlite", "dep:r2d2", "dep:r2d2_sqlite"]
+default = []
 
 [dependencies]
 ents.workspace = true
