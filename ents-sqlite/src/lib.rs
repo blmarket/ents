@@ -431,6 +431,18 @@ pub struct SqliteDb {
     pool: Pool<SqliteConnectionManager>,
 }
 
+impl SqliteDb {
+    pub fn new(pool: Pool<SqliteConnectionManager>) -> Self {
+        Self { pool }
+    }
+}
+
+impl From<Pool<SqliteConnectionManager>> for SqliteDb {
+    fn from(pool: Pool<SqliteConnectionManager>) -> Self {
+        Self::new(pool)
+    }
+}
+
 impl TransactionProvider for SqliteDb {
     type Tx<'a> = Txn<'a>;
 

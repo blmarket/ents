@@ -1,32 +1,22 @@
-# Ents Test Suite Agents
+# Ents Test Suite
 
-The `ents-test-suite` is a comprehensive test suite designed to validate implementations of the `ents` entity framework. This document describes the agent system and how to implement or use different test runners.
+The `ents-test-suite` is a comprehensive test suite designed to validate implementations of the `ents` entity framework. This document describes how to use the test suite with different storage backends.
 
 ## Overview
 
-The test suite uses a generic architecture where "agents" are implementations that provide concrete database/storage backends for the `ents` framework. Each agent implements the `TestSuiteRunner` trait, which allows the test suite to run the same tests against different storage engines.
+The test suite uses the `TransactionProvider` trait from the `ents` crate to run the same tests against different storage engines. Any type that implements `TransactionProvider` can be used directly with the test suite.
 
-## Agent Interface
+## TransactionProvider Trait
 
-### TestSuiteRunner Trait
-
-```rust
-pub trait TestSuiteRunner: Clone {
-    type CaseRunner: TestCaseRunner;
-
-    fn create(&self) -> anyhow::Result<Self::CaseRunner>;
-}
-```
-
-### TestCaseRunner Trait
+The `TransactionProvider` trait (defined in the `ents` crate) provides a standard interface for executing transactional operations:
 
 ```rust
-pub trait TestCaseRunner {
-    type Tx: Transactional;
+pub trait TransactionProvider: 'static + Clone {
+    type Tx<'a>: Transactional;
 
-    fn execute<F, R>(&mut self, f: F) -> anyhow::Result<R>
+    fn execute<R, F>(&self, func: F) -> Result<R, DatabaseError>
     where
-        F: FnOnce(Self::Tx) -> anyhow::Result<R>;
+        F: for<'a> FnOnce(Self::Tx<'a>) -> R;
 }
 ```
 
@@ -41,6 +31,14 @@ The test suite includes comprehensive tests for:
 - **Error Handling**: Proper error responses for invalid operations
 - **Multiple Entity Operations**: Bulk operations and isolation
 
+### Admin Tests
+
+For backends that support admin operations (implementing `AdminEnt`), additional tests are available:
+
+- **Audit Operations**: Verify edge consistency
+- **Fix Operations**: Repair edge mismatches
+- **List Operations**: Paginated entity listing
+
 ## Test Entities
 
 The suite provides several test entities:
@@ -51,64 +49,55 @@ The suite provides several test entities:
 - `Tag`: Tag entity for categorization
 - `UserWithUniqueEmail`: User with unique email constraints
 
-## Implementing a New Agent
+## Using the Test Suite
 
-To implement a new agent for a different storage backend:
+### Basic Tests
 
-1. **Implement Transactional**: Your storage backend must implement the `Transactional` trait from the `ents` crate.
-
-2. **Create a TestCaseRunner**: Implement `TestCaseRunner` where `Tx` is your transactional type.
-
-3. **Create a TestSuiteRunner**: Implement `TestSuiteRunner` that creates instances of your `TestCaseRunner`.
-
-4. **Run the tests**: Use `run_all_tests(your_runner)` to execute the full test suite.
-
-### Example Agent Structure
-
-```rust
-struct MyDatabaseAgent {
-    connection_string: String,
-}
-
-impl TestSuiteRunner for MyDatabaseAgent {
-    type CaseRunner = MyDatabaseTestRunner;
-
-    fn create(&self) -> anyhow::Result<Self::CaseRunner> {
-        // Initialize your database connection
-        let connection = MyDatabase::connect(&self.connection_string)?;
-        Ok(MyDatabaseTestRunner { connection })
-    }
-}
-
-struct MyDatabaseTestRunner {
-    connection: MyDatabaseConnection,
-}
-
-impl TestCaseRunner for MyDatabaseTestRunner {
-    type Tx = MyDatabaseTransaction;
-
-    fn execute<F, R>(&mut self, f: F) -> anyhow::Result<R>
-    where
-        F: FnOnce(Self::Tx) -> anyhow::Result<R>,
-    {
-        let transaction = self.connection.begin_transaction()?;
-        let result = f(transaction);
-        // Handle commit/rollback based on result
-        result
-    }
-}
-```
-
-## Running Tests
-
-To run all tests with an agent:
+To run all basic tests with a `TransactionProvider`:
 
 ```rust
 use ents_test_suite::run_all_tests;
 
-let agent = MyDatabaseAgent::new("connection_string");
-run_all_tests(agent)?;
+let db = SqliteDb::new(pool);
+run_all_tests(db)?;
 ```
+
+### Admin Tests
+
+For backends that support admin operations:
+
+```rust
+use ents_test_suite::run_audit_tests;
+
+let db = SqliteDb::new(pool);
+run_audit_tests(db)?;
+```
+
+### Example: SQLite
+
+```rust
+use ents_sqlite::SqliteDb;
+use ents_test_suite::{run_all_tests, run_audit_tests};
+
+let pool = Pool::new(SqliteConnectionManager::memory())?;
+// ... setup tables ...
+let db = SqliteDb::new(pool);
+
+run_all_tests(db.clone())?;
+run_audit_tests(db)?;
+```
+
+### Example: Heed (LMDB)
+
+```rust
+use ents_heed::HeedEnv;
+use ents_test_suite::run_all_tests;
+
+let env = HeedEnv::open(db_path, None)?;
+run_all_tests(env)?;
+```
+
+## Individual Test Functions
 
 Individual test functions are also available:
 
@@ -122,14 +111,27 @@ Individual test functions are also available:
 - `test_error_handling`
 - `test_multiple_entities`
 
+Admin test functions (require `AdminEnt`):
+
+- `test_list_entities`
+- `test_audit_success`
+- `test_audit_entity_not_found`
+- `test_audit_unexpected_entity_type`
+- `test_audit_edge_mismatch_missing_edge`
+- `test_audit_edge_mismatch_extra_edge`
+- `test_audit_edge_mismatch_wrong_content`
+- `test_audit_null_edge_provider`
+- `test_fix_ent_edges`
+
 ## Current Status
 
-- ✅ Basic CRUD operations fully tested and working
-- ✅ Entity relationships (edges) implemented and tested
-- ⚠️ Unique constraints partially implemented (framework exists but enforcement may vary by backend)
-- ✅ Concurrent updates and race condition testing
-- ✅ Error handling and edge cases covered
-- ✅ Multiple entity operations tested
+- Basic CRUD operations fully tested and working
+- Entity relationships (edges) implemented and tested
+- Unique constraints partially implemented (framework exists but enforcement may vary by backend)
+- Concurrent updates and race condition testing
+- Error handling and edge cases covered
+- Multiple entity operations tested
+- Admin operations (audit, fix, list) tested for supporting backends
 
 ## Future Enhancements
 
