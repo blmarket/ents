@@ -1,16 +1,42 @@
 mod edge_provider;
 mod query_edge;
 
-use std::any::Any;
+use std::{any::Any, borrow::BorrowMut};
 
 pub use edge_provider::{
     DraftError, EdgeDraft, EdgeValue, IncomingEdgeProvider, NullEdgeDraft,
-    NullEdgeProvider, ReadEnt, Transactional,
+    NullEdgeProvider,
 };
-pub use query_edge::{Edge, EdgeCursor, EdgeQuery, EdgeQueryResult, QueryEdge, SortOrder};
+pub use query_edge::{
+    Edge, EdgeCursor, EdgeQuery, EdgeQueryResult, QueryEdge, SortOrder,
+};
 
 /// Unique identifier for an entity
 pub type Id = u64;
+
+pub trait ReadEnt: QueryEdge {
+    fn get(&self, id: Id) -> Result<Option<Box<dyn Ent>>, DatabaseError>;
+}
+
+pub trait Transactional: ReadEnt {
+    fn create<E: Ent>(&self, ent: E) -> Result<Id, DatabaseError>;
+
+    fn delete(&self, id: Id) -> Result<(), DatabaseError>;
+
+    fn create_edge(&self, edge: EdgeValue) -> Result<(), DatabaseError>;
+
+    fn update<T, F, B>(
+        &self,
+        ent: B,
+        mutator: F,
+    ) -> Result<bool, DatabaseError>
+    where
+        T: Ent,
+        F: FnOnce(&mut T),
+        B: BorrowMut<T>;
+
+    fn commit(self) -> Result<(), DatabaseError>;
+}
 
 /// Error type for database operations
 #[derive(Debug, thiserror::Error)]

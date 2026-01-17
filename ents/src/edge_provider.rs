@@ -3,10 +3,7 @@
 //! This module provides a type-safe way to define and validate edges between entities
 //! before they are inserted into the database.
 
-use std::borrow::BorrowMut;
-
-use crate::query_edge::QueryEdge;
-use crate::{DatabaseError, Ent, Id};
+use crate::{DatabaseError, Ent, Id, ReadEnt};
 
 /// Represents a validated edge ready to be inserted into the database.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -93,30 +90,6 @@ impl<E: Ent> IncomingEdgeProvider<E> for NullEdgeProvider {
     fn draft(_ent: &E) -> Self::Draft {
         NullEdgeDraft
     }
-}
-
-pub trait ReadEnt: QueryEdge {
-    fn get(&self, id: Id) -> Result<Option<Box<dyn Ent>>, DatabaseError>;
-}
-
-pub trait Transactional: ReadEnt {
-    fn create<E: Ent>(&self, ent: E) -> Result<Id, DatabaseError>;
-
-    fn delete(&self, id: Id) -> Result<(), DatabaseError>;
-
-    fn create_edge(&self, edge: EdgeValue) -> Result<(), DatabaseError>;
-
-    fn update<T, F, B>(
-        &self,
-        ent: B,
-        mutator: F,
-    ) -> Result<bool, DatabaseError>
-    where
-        T: Ent,
-        F: FnOnce(&mut T),
-        B: BorrowMut<T>;
-
-    fn commit(self) -> Result<(), DatabaseError>;
 }
 
 impl<T1, T2> EdgeDraft for (T1, T2)
