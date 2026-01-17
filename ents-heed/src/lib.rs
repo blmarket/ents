@@ -473,6 +473,14 @@ fn parse_edge_key(key: &[u8]) -> (Id, &[u8], Id) {
     (source, sort_key, dest)
 }
 
+impl ents::TransactionalFactory for HeedEnv {
+    type Txn<'a> = Txn<'a>;
+
+    fn get(&self) -> Result<Self::Txn<'_>, DatabaseError> {
+        self.write_txn()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

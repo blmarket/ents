@@ -38,6 +38,14 @@ pub trait Transactional: ReadEnt {
     fn commit(self) -> Result<(), DatabaseError>;
 }
 
+pub trait TransactionalFactory: 'static {
+    type Txn<'a>: Transactional
+    where
+        Self: 'a;
+
+    fn get(&self) -> Result<Self::Txn<'_>, DatabaseError>;
+}
+
 /// Error type for database operations
 #[derive(Debug, thiserror::Error)]
 pub enum DatabaseError {
