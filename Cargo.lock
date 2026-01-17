@@ -214,7 +214,7 @@ dependencies = [
 
 [[package]]
 name = "ents-admin"
-version = "0.4.0"
+version = "0.4.1"
 dependencies = [
  "ents",
  "thiserror",
@@ -222,7 +222,7 @@ dependencies = [
 
 [[package]]
 name = "ents-admin-api"
-version = "0.4.0"
+version = "0.4.1"
 dependencies = [
  "axum",
  "ents",
@@ -260,7 +260,7 @@ dependencies = [
 
 [[package]]
 name = "ents-sqlite"
-version = "0.4.0"
+version = "0.4.1"
 dependencies = [
  "anyhow",
  "dyn-clone",
