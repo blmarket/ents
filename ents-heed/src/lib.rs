@@ -14,7 +14,7 @@ use std::borrow::BorrowMut;
 use std::cell::RefCell;
 use std::fs;
 use std::path::Path;
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 
 use byteorder::{BigEndian, ByteOrder};
 use ents::{
@@ -29,11 +29,12 @@ use snowflaked::Generator;
 const MAX_EDGES: usize = 100;
 
 /// LMDB environment wrapper that manages the databases.
+#[derive(Clone)]
 pub struct HeedEnv {
     env: Env,
     entities: Database<heed::types::U64<BigEndian>, Str>,
     edges: Database<Bytes, Bytes>,
-    id_generator: Mutex<Generator>,
+    id_generator: Arc<Mutex<Generator>>,
 }
 
 impl HeedEnv {
@@ -90,7 +91,7 @@ impl HeedEnv {
             env,
             entities,
             edges,
-            id_generator: Mutex::new(id_generator),
+            id_generator: Arc::new(Mutex::new(id_generator)),
         })
     }
 

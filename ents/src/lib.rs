@@ -38,7 +38,7 @@ pub trait Transactional: ReadEnt {
     fn commit(self) -> Result<(), DatabaseError>;
 }
 
-pub trait TransactionProvider: 'static {
+pub trait TransactionProvider: 'static + Clone {
     type Tx<'a>: Transactional;
 
     fn execute<R, F>(&self, func: F) -> Result<R, DatabaseError>
