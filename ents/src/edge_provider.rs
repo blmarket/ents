@@ -102,7 +102,7 @@ pub trait ReadEnt: QueryEdge {
 pub trait Transactional: ReadEnt {
     fn create<E: Ent>(&self, ent: E) -> Result<Id, DatabaseError>;
 
-    fn delete<E: Ent>(&self, id: Id) -> Result<(), DatabaseError>;
+    fn delete(&self, id: Id) -> Result<(), DatabaseError>;
 
     fn create_edge(&self, edge: EdgeValue) -> Result<(), DatabaseError>;
 

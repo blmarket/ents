@@ -125,7 +125,7 @@ impl<'conn> Transactional for Txn<'conn> {
         Ok(())
     }
 
-    fn delete<E: Ent>(&self, id: Id) -> Result<(), DatabaseError> {
+    fn delete(&self, id: Id) -> Result<(), DatabaseError> {
         self.0
             .prepare_cached(
                 r#"
@@ -355,7 +355,7 @@ impl<'conn> QueryEdge for Txn<'conn> {
         };
 
         let sql = format!(
-            "SELECT source, type, dest FROM edges WHERE source = ?{}{} {} LIMIT 101",
+            "SELECT source, type, dest FROM edges WHERE source = ?{}{} {} LIMIT 100",
             name_filter, cursor_filter, order_clause
         );
 

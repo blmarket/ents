@@ -345,7 +345,7 @@ pub fn test_basic_delete<R: TestSuiteRunner>(r: &R) -> anyhow::Result<()> {
     // Delete
     let mut runner3 = r.create()?;
     runner3.execute(|txn| {
-        txn.delete::<TestEntity>(id)?;
+        txn.delete(id)?;
         txn.commit()?;
         Ok(())
     })?;
@@ -375,7 +375,7 @@ pub fn test_error_handling<R: TestSuiteRunner>(r: &R) -> anyhow::Result<()> {
 
         // Test deleting non-existent entity should not error
         // (depending on implementation, this might or might not error)
-        let _ = txn.delete::<TestEntity>(non_existent_id);
+        let _ = txn.delete(non_existent_id);
 
         txn.commit()?;
         Ok(())

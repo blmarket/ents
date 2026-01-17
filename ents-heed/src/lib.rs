@@ -231,7 +231,7 @@ impl<'env> Transactional for Txn<'env> {
         Ok(id)
     }
 
-    fn delete<E: Ent>(&self, id: Id) -> Result<(), DatabaseError> {
+    fn delete(&self, id: Id) -> Result<(), DatabaseError> {
         // Delete edges where this entity is the destination
         // We need to scan all edges and delete matching ones
         let to_delete: Vec<Vec<u8>> = {
