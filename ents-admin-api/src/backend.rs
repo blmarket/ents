@@ -111,7 +111,7 @@ where
     for<'a> P::Tx<'a>: AdminEnt,
 {
     provider: P,
-    type_registry: TypeRegistry<P::Tx<'static>>,
+    type_registry: TypeRegistry<P>,
 }
 
 // Manual Clone implementation - P must be Clone, but P::Tx doesn't need to be
@@ -134,10 +134,7 @@ where
     for<'a> P::Tx<'a>: AdminEnt,
 {
     /// Create a new `AdminBackendProvider` with the given provider and type registry.
-    pub fn new(
-        provider: P,
-        type_registry: TypeRegistry<P::Tx<'static>>,
-    ) -> Self {
+    pub fn new(provider: P, type_registry: TypeRegistry<P>) -> Self {
         Self {
             provider,
             type_registry,
@@ -145,10 +142,7 @@ where
     }
 
     /// Set the type registry.
-    pub fn with_registry(
-        mut self,
-        registry: TypeRegistry<P::Tx<'static>>,
-    ) -> Self {
+    pub fn with_registry(mut self, registry: TypeRegistry<P>) -> Self {
         self.type_registry = registry;
         self
     }
@@ -159,7 +153,7 @@ where
     }
 
     /// Get a reference to the type registry.
-    pub fn type_registry(&self) -> &TypeRegistry<P::Tx<'static>> {
+    pub fn type_registry(&self) -> &TypeRegistry<P> {
         &self.type_registry
     }
 }
@@ -272,15 +266,7 @@ where
                 ))
             })?;
 
-        self.provider
-            .execute(|tx| {
-                // SAFETY: The audit_fn closure doesn't store references beyond
-                // the duration of this call. The transaction is dropped after.
-                let tx_static: &P::Tx<'static> =
-                    unsafe { std::mem::transmute(&tx) };
-                audit_fn(tx_static, id)
-            })
-            .map_err(ApiError::from)?
+        audit_fn(&self.provider, id)
     }
 
     fn fix_entity_edges(
@@ -297,15 +283,7 @@ where
                 ))
             })?;
 
-        self.provider
-            .execute(|tx| {
-                // SAFETY: The fix_fn closure consumes the transaction and commits it.
-                // The closure doesn't store references beyond this call.
-                let tx_static: P::Tx<'static> =
-                    unsafe { std::mem::transmute(tx) };
-                fix_fn(tx_static, id)
-            })
-            .map_err(ApiError::from)?
+        fix_fn(&self.provider, id)
     }
 
     fn list_entities(

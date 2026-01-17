@@ -28,8 +28,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     )?;
 
     // Register entity types for audit/fix operations
-    // The type parameter specifies the transaction type for this backend
-    let registry = TypeRegistryBuilder::<ents_sqlite::Txn<'static>>::new()
+    // The type parameter specifies the provider type for this backend
+    let registry = TypeRegistryBuilder::<SqliteDb>::new()
         .register::<TestEntity>()
         .register::<User>()
         .register::<Post>()
