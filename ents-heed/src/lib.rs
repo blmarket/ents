@@ -476,8 +476,11 @@ fn parse_edge_key(key: &[u8]) -> (Id, &[u8], Id) {
 impl ents::TransactionalFactory for HeedEnv {
     type Txn<'a> = Txn<'a>;
 
-    fn get(&self) -> Result<Self::Txn<'_>, DatabaseError> {
-        self.write_txn()
+    fn execute<R, F>(&self, func: F) -> Result<R, DatabaseError>
+    where
+        F: for<'b> FnOnce(Self::Txn<'b>) -> R,
+    {
+        Ok(func(self.write_txn()?))
     }
 }
 

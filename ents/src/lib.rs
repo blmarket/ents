@@ -39,11 +39,11 @@ pub trait Transactional: ReadEnt {
 }
 
 pub trait TransactionalFactory: 'static {
-    type Txn<'a>: Transactional
-    where
-        Self: 'a;
+    type Txn<'b>: Transactional;
 
-    fn get(&self) -> Result<Self::Txn<'_>, DatabaseError>;
+    fn execute<R, F>(&self, func: F) -> Result<R, DatabaseError>
+    where
+        F: for<'b> FnOnce(Self::Txn<'b>) -> R;
 }
 
 /// Error type for database operations
