@@ -9,7 +9,9 @@ use serde::{Deserialize, Serialize};
 pub struct TestEntity {
     pub name: String,
     pub value: i32,
+    #[serde(default)]
     pub id: Id,
+    #[serde(default)]
     pub last_updated: u64,
 }
 
@@ -54,7 +56,9 @@ impl TestEntity {
 pub struct User {
     pub username: String,
     pub email: String,
+    #[serde(default)]
     pub id: Id,
+    #[serde(default)]
     pub last_updated: u64,
 }
 
@@ -99,7 +103,9 @@ impl User {
 pub struct UserWithUniqueEmail {
     pub username: String,
     pub email: String,
+    #[serde(default)]
     pub id: Id,
+    #[serde(default)]
     pub last_updated: u64,
 }
 
@@ -197,7 +203,9 @@ impl UserWithUniqueEmail {
 pub struct Tag {
     pub name: String,
     pub color: String,
+    #[serde(default)]
     pub id: Id,
+    #[serde(default)]
     pub last_updated: u64,
 }
 
@@ -244,7 +252,9 @@ pub struct Post {
     pub content: String,
     pub author_id: Id,
     pub tag_ids: Vec<Id>,
+    #[serde(default)]
     pub id: Id,
+    #[serde(default)]
     pub last_updated: u64,
 }
 
