@@ -19,7 +19,7 @@ export function EntitiesListPage() {
   const [creating, setCreating] = useState(false)
   const [createError, setCreateError] = useState<string | null>(null)
 
-  const PAGE_SIZE = 200
+  const PAGE_SIZE = 95
 
   useEffect(() => {
     loadEntityTypes()
