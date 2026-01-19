@@ -6,7 +6,7 @@ use ents::{EdgeQuery, Ent, Id};
 use serde::{Deserialize, Serialize};
 
 use crate::backend::{AdminBackend, AuditResult};
-use crate::error::ApiError;
+use crate::error::{ApiError, AppJson};
 
 #[derive(Serialize)]
 pub struct EdgeResponse {
@@ -108,7 +108,7 @@ pub async fn get_incoming_edges<T: AdminBackend>(
 
 pub async fn create_entity<T: AdminBackend>(
     State(backend): State<T>,
-    Json(entity): Json<Box<dyn Ent>>,
+    AppJson(entity): AppJson<Box<dyn Ent>>,
 ) -> Result<Json<CreateResponse>, ApiError> {
     let id = backend.create_entity(entity.clone())?;
     let created = backend.get_entity(id)?.ok_or(ApiError::Internal(
@@ -123,7 +123,7 @@ pub async fn create_entity<T: AdminBackend>(
 pub async fn update_entity<T: AdminBackend>(
     State(backend): State<T>,
     Path(id): Path<Id>,
-    Json(entity): Json<Box<dyn Ent>>,
+    AppJson(entity): AppJson<Box<dyn Ent>>,
 ) -> Result<Json<Box<dyn Ent>>, ApiError> {
     // Verify ID in path matches entity ID (if entity has non-zero ID)
     if entity.id() != 0 && entity.id() != id {

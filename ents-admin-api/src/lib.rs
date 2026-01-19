@@ -7,5 +7,5 @@ mod type_registry;
 pub use type_registry::{TypeRegistry, TypeRegistryBuilder};
 
 pub use backend::{AdminBackend, AdminBackendProvider, AuditResult, EdgeInfo};
-pub use error::ApiError;
+pub use error::{ApiError, AppJson};
 pub use router::admin_router;
