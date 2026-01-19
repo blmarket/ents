@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MemoryRouter, Routes, Route } from 'react-router-dom'
@@ -21,25 +21,26 @@ const mockEntity = {
   id: 1,
   type: 'test_type',
   data: { name: 'Test Entity' },
+  last_updated: 1700000000,
 }
 
 const mockEdges = {
-  edges: [{ source: 1, sort_key: 'test_edge', dest: 2 }],
+  edges: [{ source: 1, sort_key: 'test_edge', sort_key_bytes: [116, 101, 115, 116], dest: 2 }],
   has_more: false,
 }
 
-const mockIncomingEdges = [{ source: 3, sort_key: 'incoming_edge', dest: 1 }]
+const mockIncomingEdges = [{ source: 3, sort_key: 'incoming_edge', sort_key_bytes: [105, 110, 99], dest: 1 }]
 
 const mockUpdatedIncomingEdges = [
-  { source: 3, sort_key: 'incoming_edge', dest: 1 },
-  { source: 4, sort_key: 'new_incoming_edge', dest: 1 },
+  { source: 3, sort_key: 'incoming_edge', sort_key_bytes: [105, 110, 99], dest: 1 },
+  { source: 4, sort_key: 'new_incoming_edge', sort_key_bytes: [110, 101, 119], dest: 1 },
 ]
 
 const mockAuditResult = {
   valid: false,
   existing_edges: [],
   expected_edges: [],
-  missing: [{ source: 1, sort_key: 'missing_edge', dest: 4 }],
+  missing: [{ source: 1, sort_key: 'missing_edge', sort_key_bytes: [109, 105, 115, 115], dest: 4 }],
   extra: [],
 }
 
@@ -63,7 +64,6 @@ function renderEntityPage(entityId: string = '1') {
 
   // Spy on queryClient methods
   const refetchQueriesSpy = vi.spyOn(queryClient, 'refetchQueries')
-  const invalidateQueriesSpy = vi.spyOn(queryClient, 'invalidateQueries')
 
   render(
     <QueryClientProvider client={queryClient}>
@@ -75,7 +75,7 @@ function renderEntityPage(entityId: string = '1') {
     </QueryClientProvider>
   )
 
-  return { queryClient, refetchQueriesSpy, invalidateQueriesSpy }
+  return { queryClient, refetchQueriesSpy }
 }
 
 describe('EntityPage', () => {
@@ -99,7 +99,7 @@ describe('EntityPage', () => {
 
   it('calls refetchQueries (not invalidateQueries) when edges are fixed', async () => {
     const user = userEvent.setup()
-    const { refetchQueriesSpy, invalidateQueriesSpy } = renderEntityPage()
+    const { refetchQueriesSpy } = renderEntityPage()
 
     // Wait for entity to load
     await waitFor(() => {

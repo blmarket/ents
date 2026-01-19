@@ -4,8 +4,18 @@ const API_BASE = import.meta.env.VITE_API_URL || ''
 
 async function handleResponse<T>(response: Response): Promise<T> {
   if (!response.ok) {
-    const error = await response.json().catch(() => ({ error: response.statusText }))
-    throw new Error(error.error || `HTTP ${response.status}`)
+    const contentType = response.headers.get('content-type') || ''
+    let errorMessage: string
+
+    if (contentType.includes('application/json')) {
+      const error = await response.json().catch(() => null)
+      errorMessage = error?.error || error?.message || `HTTP ${response.status}: ${response.statusText}`
+    } else {
+      const text = await response.text().catch(() => '')
+      errorMessage = text || `HTTP ${response.status}: ${response.statusText}`
+    }
+
+    throw new Error(errorMessage)
   }
   return response.json()
 }

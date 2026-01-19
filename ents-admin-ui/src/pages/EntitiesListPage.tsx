@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
-import { getKnownTypes, listEntities } from '../api/client'
+import { Link, useNavigate } from 'react-router-dom'
+import { getKnownTypes, listEntities, createEntity } from '../api/client'
 import type { Entity } from '../api/types'
+import EntityCreator from '../components/EntityCreator'
 
 export function EntitiesListPage() {
+  const navigate = useNavigate()
   const [entityTypes, setEntityTypes] = useState<string[]>([])
   const [selectedType, setSelectedType] = useState<string>('')
   const [entities, setEntities] = useState<Entity[]>([])
@@ -12,6 +14,10 @@ export function EntitiesListPage() {
   const [cursor, setCursor] = useState<number | undefined>(undefined)
   const [hasMore, setHasMore] = useState(false)
   const [loadingTypes, setLoadingTypes] = useState(true)
+  const [showCreator, setShowCreator] = useState(false)
+  const [creatorType, setCreatorType] = useState<string>('')
+  const [creating, setCreating] = useState(false)
+  const [createError, setCreateError] = useState<string | null>(null)
 
   const PAGE_SIZE = 20
 
@@ -82,6 +88,27 @@ export function EntitiesListPage() {
     loadEntities(false)
   }
 
+  const openCreator = () => {
+    setCreatorType(selectedType || entityTypes[0] || '')
+    setCreateError(null)
+    setShowCreator(true)
+  }
+
+  const handleCreate = async (entity: object) => {
+    try {
+      setCreating(true)
+      setCreateError(null)
+      const result = await createEntity(entity)
+      setShowCreator(false)
+      // Navigate to the newly created entity
+      navigate(`/entities/${result.id}`)
+    } catch (err) {
+      setCreateError(err instanceof Error ? err.message : 'Failed to create entity')
+    } finally {
+      setCreating(false)
+    }
+  }
+
   if (loadingTypes) {
     return (
       <div className="flex justify-center items-center min-h-[60vh]">
@@ -93,7 +120,17 @@ export function EntitiesListPage() {
   return (
     <div className="max-w-6xl mx-auto p-6">
       <div className="mb-6">
-        <h1 className="text-3xl font-bold text-white mb-4">Entity Browser</h1>
+        <div className="flex items-center justify-between mb-4">
+          <h1 className="text-3xl font-bold text-white">Entity Browser</h1>
+          <button
+            onClick={openCreator}
+            disabled={entityTypes.length === 0}
+            className="px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded transition-colors flex items-center gap-2"
+          >
+            <span>+</span>
+            <span>Create Entity</span>
+          </button>
+        </div>
         <p className="text-gray-400 mb-4">
           Browse and manage entities by type. Select an entity type to view all entities of that type.
         </p>
@@ -204,6 +241,19 @@ export function EntitiesListPage() {
         <div className="flex justify-center items-center py-8">
           <div className="text-gray-400">Loading entities...</div>
         </div>
+      )}
+
+      {/* Entity Creator Modal */}
+      {showCreator && (
+        <EntityCreator
+          selectedType={creatorType}
+          entityTypes={entityTypes}
+          onTypeChange={setCreatorType}
+          onCreate={handleCreate}
+          onCancel={() => setShowCreator(false)}
+          creating={creating}
+          error={createError}
+        />
       )}
     </div>
   )
