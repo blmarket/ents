@@ -38,6 +38,8 @@
           craneLib = crane.mkLib pkgs;
         in
         {
+          packages.admin-ui = pkgs.callPackage ./ents-admin-ui/default.nix { };
+
           devShells.default = pkgs.mkShell {
             nativeBuildInputs = [
               pkgs.pkg-config
