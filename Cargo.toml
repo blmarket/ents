@@ -3,7 +3,7 @@ members = ["ents", "ents-admin", "ents-admin-api", "ents-sqlite", "ents-heed", "
 resolver = "2"
 
 [workspace.dependencies]
-ents = { version = "0.4.0", path = "ents" }
+ents = { version = "0.4.1", path = "ents" }
 ents-admin = { version = "0.4.1", path = "ents-admin" }
 ents-sqlite = { version = "0.4.1", path = "ents-sqlite" }
 ents-heed = { version = "0.4.0", path = "ents-heed" }
