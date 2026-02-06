@@ -4,8 +4,8 @@ mod query_edge;
 use std::{any::Any, borrow::BorrowMut};
 
 pub use edge_provider::{
-    DraftError, EdgeDraft, EdgeValue, IncomingEdgeProvider, NullEdgeDraft,
-    NullEdgeProvider,
+    check_incoming_edges, DraftError, EdgeDraft, EdgeValue,
+    IncomingEdgeProvider, IncomingEdgeValue, NullEdgeDraft, NullEdgeProvider,
 };
 pub use query_edge::{
     Edge, EdgeCursor, EdgeQuery, EdgeQueryResult, QueryEdge, SortOrder,
@@ -82,8 +82,7 @@ pub trait Ent: Any + dyn_clone::DynClone + Send + Sync {
     where
         Self: Sized,
     {
-        let draft = Self::EdgeProvider::draft(self);
-        for edge in draft.check(txn)? {
+        for edge in check_incoming_edges(self, txn)? {
             txn.create_edge(edge)?;
         }
         Ok(())

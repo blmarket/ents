@@ -294,6 +294,7 @@ impl<'env> Transactional for Txn<'env> {
     ) -> Result<bool, DatabaseError> {
         let ent = ent0.borrow_mut();
         let draft0 = T::EdgeProvider::draft(ent);
+        let ent_id = ent.id();
         let expected_last_updated = ent.last_updated();
 
         mutator(ent);
@@ -312,12 +313,28 @@ impl<'env> Transactional for Txn<'env> {
             );
         }
 
-        let edge0 = draft0.check(self).map_err(|e| DatabaseError::Other {
-            source: Box::new(e),
-        })?;
-        let edge1 = draft1.check(self).map_err(|e| DatabaseError::Other {
-            source: Box::new(e),
-        })?;
+        let edge0 = draft0
+            .check(self)
+            .map(|edges| {
+                edges
+                    .into_iter()
+                    .map(|edge| edge.with_dest(ent_id))
+                    .collect::<Vec<_>>()
+            })
+            .map_err(|e| DatabaseError::Other {
+                source: Box::new(e),
+            })?;
+        let edge1 = draft1
+            .check(self)
+            .map(|edges| {
+                edges
+                    .into_iter()
+                    .map(|edge| edge.with_dest(ent_id))
+                    .collect::<Vec<_>>()
+            })
+            .map_err(|e| DatabaseError::Other {
+                source: Box::new(e),
+            })?;
 
         let updated = self.update_internal(
             ent.id(),

@@ -10,8 +10,8 @@
 
 use ents::{
     DraftError, EdgeDraft, EdgeQuery, EdgeValue, Ent, EntExt, EntMutationError,
-    Id, IncomingEdgeProvider, NullEdgeProvider, QueryEdge, ReadEnt,
-    Transactional,
+    check_incoming_edges, Id, IncomingEdgeProvider, IncomingEdgeValue,
+    NullEdgeProvider, QueryEdge, ReadEnt, Transactional,
 };
 use ents_admin::AdminEnt;
 use ents_sqlite::Txn;
@@ -87,7 +87,10 @@ pub struct UniqueUsernameDraft {
 }
 
 impl EdgeDraft for UniqueUsernameDraft {
-    fn check<T: ReadEnt>(self, txn: &T) -> Result<Vec<EdgeValue>, DraftError> {
+    fn check<T: ReadEnt>(
+        self,
+        txn: &T,
+    ) -> Result<Vec<IncomingEdgeValue>, DraftError> {
         // Check if any existing edge has this username as the sort key
         let username_bytes = self.username.as_bytes();
         let existing_result = txn.find_edges(
@@ -106,10 +109,9 @@ impl EdgeDraft for UniqueUsernameDraft {
         }
 
         // Create the unique username edge: UserNameIndex -> User with username as sort key
-        Ok(vec![EdgeValue::new(
+        Ok(vec![IncomingEdgeValue::new(
             self.username_index_id,
             username_bytes.to_vec(),
-            self.user_id,
         )])
     }
 }
@@ -187,7 +189,10 @@ pub struct AuthorEdgeDraft {
 }
 
 impl EdgeDraft for AuthorEdgeDraft {
-    fn check<T: ReadEnt>(self, txn: &T) -> Result<Vec<EdgeValue>, DraftError> {
+    fn check<T: ReadEnt>(
+        self,
+        txn: &T,
+    ) -> Result<Vec<IncomingEdgeValue>, DraftError> {
         // Validate that the author exists
         let author = txn.get(self.author_id)?;
         if author.is_none() {
@@ -196,10 +201,9 @@ impl EdgeDraft for AuthorEdgeDraft {
 
         // Edge: User --[authored]--> Post
         // The Post is the destination (incoming edge to Post)
-        Ok(vec![EdgeValue::new(
+        Ok(vec![IncomingEdgeValue::new(
             self.author_id,
             b"authored".to_vec(),
-            self.post_id,
         )])
     }
 }
@@ -214,7 +218,10 @@ pub struct TagsEdgeDraft {
 }
 
 impl EdgeDraft for TagsEdgeDraft {
-    fn check<T: ReadEnt>(self, txn: &T) -> Result<Vec<EdgeValue>, DraftError> {
+    fn check<T: ReadEnt>(
+        self,
+        txn: &T,
+    ) -> Result<Vec<IncomingEdgeValue>, DraftError> {
         let mut edges = Vec::new();
 
         // Validate that all tag sources exist
@@ -225,10 +232,9 @@ impl EdgeDraft for TagsEdgeDraft {
             }
             // Edge: Tag --[tagged]--> Post
             // The Post is the destination (incoming edge to Post)
-            edges.push(EdgeValue::new(
+            edges.push(IncomingEdgeValue::new(
                 *tag_id,
                 b"tagged".to_vec(),
-                self.post_id,
             ));
         }
 
@@ -320,7 +326,10 @@ pub struct CommentEdgeDraft {
 }
 
 impl EdgeDraft for CommentEdgeDraft {
-    fn check<T: ReadEnt>(self, txn: &T) -> Result<Vec<EdgeValue>, DraftError> {
+    fn check<T: ReadEnt>(
+        self,
+        txn: &T,
+    ) -> Result<Vec<IncomingEdgeValue>, DraftError> {
         // Validate that the post exists (source of edge)
         let post = txn.get(self.post_id)?;
         if post.is_none() {
@@ -337,16 +346,8 @@ impl EdgeDraft for CommentEdgeDraft {
         // Edge: User --[commented]--> Comment
         // The Comment is the destination (incoming edges to Comment)
         Ok(vec![
-            EdgeValue::new(
-                self.post_id,
-                b"has_comment".to_vec(),
-                self.comment_id,
-            ),
-            EdgeValue::new(
-                self.author_id,
-                b"commented".to_vec(),
-                self.comment_id,
-            ),
+            IncomingEdgeValue::new(self.post_id, b"has_comment".to_vec()),
+            IncomingEdgeValue::new(self.author_id, b"commented".to_vec()),
         ])
     }
 }
@@ -438,8 +439,7 @@ impl<E: Ent> EdgeEnumerator for TypedEdgeEnumerator<E> {
         // Try to downcast to concrete type
         if let Some(concrete_ent) = ent.as_ent::<E>() {
             // Use the EdgeProvider associated type to draft edges
-            let draft = E::EdgeProvider::draft(concrete_ent);
-            draft.check(txn)
+            check_incoming_edges(concrete_ent, txn)
         } else {
             Err(DraftError::ValidationFailed(
                 "Failed to downcast entity".to_string(),

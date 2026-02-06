@@ -1,6 +1,6 @@
 use ents::{
-    DraftError, EdgeDraft, EdgeQuery, EdgeValue, Ent, EntExt as _,
-    EntMutationError, Id, IncomingEdgeProvider, NullEdgeProvider, QueryEdge,
+    DraftError, EdgeDraft, EdgeQuery, Ent, EntExt as _, EntMutationError, Id,
+    IncomingEdgeProvider, IncomingEdgeValue, NullEdgeProvider, QueryEdge,
     ReadEnt, Transactional,
 };
 use ents_sqlite::Txn;
@@ -152,11 +152,13 @@ struct TestPersonEdgeDraft {
 }
 
 impl EdgeDraft for TestPersonEdgeDraft {
-    fn check<T: ReadEnt>(self, _txn: &T) -> Result<Vec<EdgeValue>, DraftError> {
-        Ok(vec![EdgeValue::new(
-            self.person_id,
-            b"lives_in".to_vec(),
+    fn check<T: ReadEnt>(
+        self,
+        _txn: &T,
+    ) -> Result<Vec<IncomingEdgeValue>, DraftError> {
+        Ok(vec![IncomingEdgeValue::new(
             self.city_id,
+            b"lives_in".to_vec(),
         )])
     }
 }
@@ -522,10 +524,10 @@ fn test_update4_edge_change() {
     let person_id = txn.create(person.clone()).unwrap();
     person.set_id(person_id);
 
-    // Verify edge to city1
-    let result = txn.find_edges(person_id, EdgeQuery::asc(&[])).unwrap();
+    // Verify incoming edge from city1 to person
+    let result = txn.find_edges(city1_id, EdgeQuery::asc(&[])).unwrap();
     assert_eq!(result.edges.len(), 1);
-    assert_eq!(result.edges[0].dest, city1_id);
+    assert_eq!(result.edges[0].dest, person_id);
 
     // Update person to live in city2 using update4
     let success = txn
@@ -535,10 +537,13 @@ fn test_update4_edge_change() {
         .unwrap();
     assert!(success);
 
-    // Verify edge changed to city2
-    let result = txn.find_edges(person_id, EdgeQuery::asc(&[])).unwrap();
-    assert_eq!(result.edges.len(), 1);
-    assert_eq!(result.edges[0].dest, city2_id);
+    // Verify edge moved from city1 to city2
+    let result_city1 = txn.find_edges(city1_id, EdgeQuery::asc(&[])).unwrap();
+    assert_eq!(result_city1.edges.len(), 0);
+
+    let result_city2 = txn.find_edges(city2_id, EdgeQuery::asc(&[])).unwrap();
+    assert_eq!(result_city2.edges.len(), 1);
+    assert_eq!(result_city2.edges[0].dest, person_id);
 
     person.set_lives_in_link(city2_id);
 
@@ -551,8 +556,8 @@ fn test_update4_edge_change() {
         .unwrap();
     assert!(success_no_change);
 
-    // Verify edge is still city2
-    let result = txn.find_edges(person_id, EdgeQuery::asc(&[])).unwrap();
+    // Verify edge is still from city2 to person
+    let result = txn.find_edges(city2_id, EdgeQuery::asc(&[])).unwrap();
     assert_eq!(result.edges.len(), 1);
-    assert_eq!(result.edges[0].dest, city2_id);
+    assert_eq!(result.edges[0].dest, person_id);
 }

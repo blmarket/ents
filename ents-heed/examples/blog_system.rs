@@ -6,9 +6,9 @@
 //! Run with: cargo run --example blog_system
 
 use ents::{
-    DraftError, EdgeDraft, EdgeQuery, EdgeValue, Ent, EntExt, EntMutationError,
-    Id, IncomingEdgeProvider, NullEdgeProvider, QueryEdge, ReadEnt,
-    Transactional,
+    DraftError, EdgeDraft, EdgeQuery, Ent, EntExt, EntMutationError, Id,
+    IncomingEdgeProvider, IncomingEdgeValue, NullEdgeProvider, QueryEdge,
+    ReadEnt, Transactional,
 };
 use ents_heed::HeedEnv;
 use serde::{Deserialize, Serialize};
@@ -92,11 +92,13 @@ struct BlogPostEdgeDraft {
 }
 
 impl EdgeDraft for BlogPostEdgeDraft {
-    fn check<T: ReadEnt>(self, _txn: &T) -> Result<Vec<EdgeValue>, DraftError> {
-        Ok(vec![EdgeValue::new(
+    fn check<T: ReadEnt>(
+        self,
+        _txn: &T,
+    ) -> Result<Vec<IncomingEdgeValue>, DraftError> {
+        Ok(vec![IncomingEdgeValue::new(
             self.post_id,
             b"authored_by".to_vec(),
-            self.author_id,
         )])
     }
 }

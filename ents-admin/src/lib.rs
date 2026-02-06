@@ -1,6 +1,6 @@
 use ents::{
-    DatabaseError, DraftError, Edge, EdgeDraft, EdgeValue, Ent, EntExt, Id,
-    IncomingEdgeProvider, Transactional,
+    check_incoming_edges, DatabaseError, DraftError, Edge, EdgeValue, Ent,
+    EntExt, Id, Transactional,
 };
 
 /// Error type for edge audit operations.
@@ -70,8 +70,7 @@ pub trait AdminEnt: Transactional {
         self.remove_edges_by_dest(id)?;
 
         // Step 4: Draft edges (this validates and creates new edge values)
-        let draft = E::EdgeProvider::draft(ent);
-        let mut drafted_edges = draft.check(self)?;
+        let mut drafted_edges = check_incoming_edges(ent, self)?;
         drafted_edges.sort_by(|a, b| {
             (&a.source, &a.sort_key).cmp(&(&b.source, &b.sort_key))
         });
@@ -107,8 +106,7 @@ pub trait AdminEnt: Transactional {
         self.remove_edges_by_dest(id)?;
 
         // Step 3: Draft and create new edges
-        let draft = E::EdgeProvider::draft(ent);
-        let edges = draft.check(&self)?;
+        let edges = check_incoming_edges(ent, &self)?;
 
         for edge in edges {
             self.create_edge(edge)?;

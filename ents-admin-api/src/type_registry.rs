@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use ents::{
-    EdgeDraft, EdgeValue, Ent, EntExt, Id, IncomingEdgeProvider, ReadEnt,
+    check_incoming_edges, EdgeValue, Ent, EntExt, Id, ReadEnt,
     TransactionProvider,
 };
 use ents_admin::AdminEnt;
@@ -82,12 +82,8 @@ where
                     });
 
                     // Draft expected edges
-                    let draft =
-                        <E::EdgeProvider as IncomingEdgeProvider<E>>::draft(
-                            ent,
-                        );
-                    let mut expected_edges =
-                        draft.check(&txn).map_err(|e| {
+                    let mut expected_edges = check_incoming_edges(ent, &txn)
+                        .map_err(|e| {
                             ApiError::Internal(format!(
                                 "Failed to draft edges: {}",
                                 e

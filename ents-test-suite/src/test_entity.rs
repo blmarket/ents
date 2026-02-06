@@ -1,6 +1,6 @@
 use ents::{
-    DraftError, EdgeDraft, EdgeQuery, EdgeValue, Ent, EntMutationError, Id,
-    IncomingEdgeProvider, NullEdgeProvider, ReadEnt,
+    DraftError, EdgeDraft, EdgeQuery, Ent, EntMutationError, Id,
+    IncomingEdgeProvider, IncomingEdgeValue, NullEdgeProvider, ReadEnt,
 };
 use serde::{Deserialize, Serialize};
 
@@ -142,7 +142,10 @@ pub struct UniqueEmailDraft {
 }
 
 impl EdgeDraft for UniqueEmailDraft {
-    fn check<T: ReadEnt>(self, txn: &T) -> Result<Vec<EdgeValue>, DraftError> {
+    fn check<T: ReadEnt>(
+        self,
+        txn: &T,
+    ) -> Result<Vec<IncomingEdgeValue>, DraftError> {
         // Check if any existing user has this email
         let existing_edges = txn
             .find_edges(0, EdgeQuery::asc(&[b"unique_email"]))?
@@ -163,10 +166,9 @@ impl EdgeDraft for UniqueEmailDraft {
         }
 
         // Create the unique email edge
-        Ok(vec![EdgeValue::new(
+        Ok(vec![IncomingEdgeValue::new(
             0, // Use a special source ID for global constraints
             b"unique_email".to_vec(),
-            self.user_id,
         )])
     }
 }
@@ -268,11 +270,10 @@ impl EdgeDraft for AuthorEdgeDraft {
     fn check<T: ents::ReadEnt>(
         self,
         _txn: &T,
-    ) -> Result<Vec<EdgeValue>, DraftError> {
-        Ok(vec![EdgeValue::new(
+    ) -> Result<Vec<IncomingEdgeValue>, DraftError> {
+        Ok(vec![IncomingEdgeValue::new(
             self.author_id,
             b"authored".to_vec(),
-            self.post_id,
         )])
     }
 }
@@ -287,13 +288,12 @@ impl EdgeDraft for TagsEdgeDraft {
     fn check<T: ents::ReadEnt>(
         self,
         _txn: &T,
-    ) -> Result<Vec<EdgeValue>, DraftError> {
+    ) -> Result<Vec<IncomingEdgeValue>, DraftError> {
         let mut edges = Vec::new();
         for tag_id in self.tag_ids {
-            edges.push(EdgeValue::new(
+            edges.push(IncomingEdgeValue::new(
                 tag_id,
                 b"tagged".to_vec(),
-                self.post_id,
             ));
         }
         Ok(edges)
