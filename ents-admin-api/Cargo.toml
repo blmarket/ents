@@ -2,7 +2,7 @@
 name = "ents-admin-api"
 description = "HTTP API for ents entity administration"
 license = "MIT OR Apache-2.0"
-version = "0.4.3"
+version = "0.5.0-alpha.0"
 edition = "2021"
 authors = ["blmarket@gmail.com"]
 homepage = "https://github.com/blmarket/ents"

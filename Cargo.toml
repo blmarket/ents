@@ -3,9 +3,9 @@ members = ["ents", "ents-admin", "ents-admin-api", "ents-sqlite", "ents-heed", "
 resolver = "2"
 
 [workspace.dependencies]
-ents = { version = "0.4.1", path = "ents" }
-ents-admin = { version = "0.4.1", path = "ents-admin" }
-ents-sqlite = { version = "0.4.1", path = "ents-sqlite" }
-ents-heed = { version = "0.4.0", path = "ents-heed" }
-ents-test-suite = { version = "0.4.0", path = "ents-test-suite" }
-ents-admin-api = { version = "0.4.1", path = "ents-admin-api" }
+ents = { version = "0.5.0-alpha.0", path = "ents" }
+ents-admin = { version = "0.5.0-alpha.0", path = "ents-admin" }
+ents-sqlite = { version = "0.5.0-alpha.0", path = "ents-sqlite" }
+ents-heed = { version = "0.5.0-alpha.0", path = "ents-heed" }
+ents-test-suite = { version = "0.5.0-alpha.0", path = "ents-test-suite" }
+ents-admin-api = { version = "0.5.0-alpha.0", path = "ents-admin-api" }
