@@ -1,0 +1,24 @@
+[package]
+name = "ents-postgres"
+version = "0.5.0"
+authors = ["blmarket@gmail.com"]
+edition = "2021"
+license = "MIT OR Apache-2.0"
+description = "Ents database implementation using PostgreSQL"
+repository = "https://github.com/blmarket/ents"
+
+[dependencies]
+ents.workspace = true
+ents-admin.workspace = true
+r2d2 = "0.8.10"
+r2d2_postgres = "0.18.2"
+postgres = "0.19.13"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+dyn-clone = "1.0.20"
+thiserror = "2"
+anyhow = "1"
+
+[dev-dependencies]
+typetag = "0.2"
+ents-test-suite.workspace = true
