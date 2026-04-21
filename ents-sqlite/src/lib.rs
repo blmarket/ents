@@ -2,8 +2,8 @@ use std::borrow::BorrowMut;
 
 use ents::{
     DatabaseError, Edge, EdgeDraft, EdgeQuery, EdgeQueryResult, EdgeValue, Ent,
-    Id, IncomingEdgeProvider, QueryEdge, ReadEnt, SortOrder, Transactional,
-    TransactionProvider,
+    Id, IncomingEdgeProvider, QueryEdge, ReadEnt, SortOrder,
+    TransactionProvider, Transactional,
 };
 use ents_admin::AdminEnt;
 use r2d2::Pool;

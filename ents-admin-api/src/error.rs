@@ -43,7 +43,10 @@ where
 {
     type Rejection = ApiError;
 
-    async fn from_request(req: Request, state: &S) -> Result<Self, Self::Rejection> {
+    async fn from_request(
+        req: Request,
+        state: &S,
+    ) -> Result<Self, Self::Rejection> {
         match Json::<T>::from_request(req, state).await {
             Ok(Json(value)) => Ok(AppJson(value)),
             Err(rejection) => Err(transform_json_error(rejection)),
@@ -69,7 +72,10 @@ fn transform_json_error(rejection: JsonRejection) -> ApiError {
         other => {
             // Extract meaningful error from the rejection
             let body = other.body_text();
-            if body.is_empty() || body == "Unprocessable Entity" || body == "Bad Request" {
+            if body.is_empty()
+                || body == "Unprocessable Entity"
+                || body == "Bad Request"
+            {
                 "Invalid entity data. Check that all required fields are provided.".to_string()
             } else {
                 transform_serde_error(&body)

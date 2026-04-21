@@ -291,10 +291,7 @@ impl EdgeDraft for TagsEdgeDraft {
     ) -> Result<Vec<IncomingEdgeValue>, DraftError> {
         let mut edges = Vec::new();
         for tag_id in self.tag_ids {
-            edges.push(IncomingEdgeValue::new(
-                tag_id,
-                b"tagged".to_vec(),
-            ));
+            edges.push(IncomingEdgeValue::new(tag_id, b"tagged".to_vec()));
         }
         Ok(edges)
     }

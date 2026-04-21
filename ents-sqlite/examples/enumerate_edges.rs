@@ -9,8 +9,8 @@
 //! 6. How to use AuditEntEdges trait for edge auditing
 
 use ents::{
-    DraftError, EdgeDraft, EdgeQuery, EdgeValue, Ent, EntExt, EntMutationError,
-    check_incoming_edges, Id, IncomingEdgeProvider, IncomingEdgeValue,
+    check_incoming_edges, DraftError, EdgeDraft, EdgeQuery, EdgeValue, Ent,
+    EntExt, EntMutationError, Id, IncomingEdgeProvider, IncomingEdgeValue,
     NullEdgeProvider, QueryEdge, ReadEnt, Transactional,
 };
 use ents_admin::AdminEnt;
@@ -232,10 +232,7 @@ impl EdgeDraft for TagsEdgeDraft {
             }
             // Edge: Tag --[tagged]--> Post
             // The Post is the destination (incoming edge to Post)
-            edges.push(IncomingEdgeValue::new(
-                *tag_id,
-                b"tagged".to_vec(),
-            ));
+            edges.push(IncomingEdgeValue::new(*tag_id, b"tagged".to_vec()));
         }
 
         Ok(edges)
@@ -773,7 +770,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let verify_txn = Txn::new(verify_tx);
         let user_result =
             verify_txn.find_edges(username_index_id, EdgeQuery::asc(&[]))?;
-        println!("  UserNameIndex edges: {} (unchanged)", user_result.edges.len());
+        println!(
+            "  UserNameIndex edges: {} (unchanged)",
+            user_result.edges.len()
+        );
     }
 
     println!("\n=== Audit Complete ===");
